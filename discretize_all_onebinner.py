@@ -1,6 +1,6 @@
 import os
 
-#####CHECK WHICH ONE IS MISSING : IS ZToQQ !!!
+
 
 #list_of_jets=['TTBar','ZJetsToNuNu','HToBB','HToCC','HToGG','HToWW2Q1L','HToWW4Q','TTBarLep','WToQ','ZToQQ']
 list_of_jets=['TTBar','ZJetsToNuNu']

@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from model_new import JetTransformerClassifier
+from model import JetTransformerClassifier
 
 from tqdm import tqdm
 import pandas as pd
