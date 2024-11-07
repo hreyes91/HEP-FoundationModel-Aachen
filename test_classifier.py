@@ -97,11 +97,12 @@ def plot_roc_curve(y_true, y_score,model_dir):
     plt.plot(tpr,1/fpr, color='darkorange', lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
     #plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
+    plt.xlabel('True Positive Rate')
+    plt.ylabel('False Positive Rate')
+    plt.yscale('log')
     plt.title('ROC Curve')
     plt.legend(loc="lower right")
-    plt.savefig(model_dir+'/roc_test.png')
+    plt.savefig(model_dir+'/roc_test_1fpr.png')
     return
 
 
@@ -141,36 +142,38 @@ if __name__ == '__main__':
     loss_list = []
     prediction_list = []
     label_list = []
+    logits_list=[]
     min_val_loss = np.inf
+    with torch.no_grad():
+        for x, padding_mask, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
+            label_list.append(label.detach().numpy())
+            x = x.to(device)
+            padding_mask = padding_mask.to(device)
+            label = label.to(device)
 
-    for x, padding_mask, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
-        label_list.append(label.detach().numpy())
-        x = x.to(device)
-        padding_mask = padding_mask.to(device)
-        label = label.to(device)
+            #with torch.no_grad():
+            #with torch.cuda.amp.autocast():
+            logits = model(x, padding_mask)
+            predictions = torch.sigmoid(logits)
+            loss = model.loss(logits, label.view(-1, 1))
 
-        with torch.no_grad():
-            with torch.cuda.amp.autocast():
-                logits = model(x, padding_mask)
-                predictions = torch.sigmoid(logits)
-                loss = model.loss(logits, label.view(-1, 1))
+            loss_list.append(loss.cpu().detach().numpy())
+            prediction_list.append(predictions.cpu().detach().numpy())
+            logits_list.append(logits.cpu().detach().numpy())
 
-        loss_list.append(loss.cpu().detach().numpy())
-        prediction_list.append(predictions.cpu().detach().numpy())
+    predictions = np.concatenate(prediction_list, axis=0)
+    logits_all=np.concatenate(logits_list, axis=0)
+    label_all = np.concatenate(label_list, axis=0)
 
-    predictions = np.concatenate(prediction_list, axis=0)[:,0]
-    label_list = np.concatenate(label_list, axis=0)
-    print(predictions.shape)
-    print(label_list.shape)
-    print(predictions)
-    print(label_list)
-    
-    auc_score=roc_auc_score(label_list, predictions)
+    predictions=predictions[:,0]
+
+    auc_score=roc_auc_score(label_all, predictions)
     print(auc_score)
     
-    plot_roc_curve(label_list, predictions,args.model_dir)
+    plot_roc_curve(label_all, predictions,args.model_dir)
     saveAUCscore(args.model_dir,auc_score)
     
     np.savez(os.path.join(args.model_dir, args.pred_name),
             predictions=predictions,
-            labels=label_list)
+            labels=label_all,
+            logits=logits_all)
