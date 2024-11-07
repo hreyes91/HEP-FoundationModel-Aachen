@@ -1,0 +1,8 @@
+numpy
+pandas
+tqdm
+tables
+protobuf==3.20
+tensorboard
+scikit-learn
+matplotlib

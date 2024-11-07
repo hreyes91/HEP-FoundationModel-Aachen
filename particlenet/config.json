@@ -1,0 +1,52 @@
+{
+  "graphnet": {
+    "activation": "LeakyReLU",
+    "k": 16,
+    "channels": [
+      [
+        64,
+        64,
+        64
+      ],
+      [
+        128,
+        128,
+        128
+      ],
+      [
+        256,
+        256,
+        256
+      ]
+    ],
+    "classifier": [
+      256,
+      128,
+      2
+    ],
+    "dropout": 0.1,
+    "static": false
+  },
+  "data": {
+    "sig_file": "/net/data_t2k/transformers-hep/JetClass/TTBar_models/TTBar_run_testwall_10M_9/samples_samples_nsamples200000_trunc_5000.h5",
+    "bg_file": "/net/data_t2k/transformers-hep/JetClass/discretized/TTBar_test___10M_TTBar.h5",
+    "n_jets": 2000,
+    "n_const": 100,
+    "bg_key": "discretized",
+    "sig_key": "discretized",
+    "seed": 0,
+    "bg_noise": false,
+    "sig_noise": false
+  },
+  "training": {
+    "batch_size": 256,
+    "epochs": 2,
+    "validation_split": 0.1,
+    "validation_freq": 1,
+    "verbose": 1
+  },
+  "logging": {
+    "logfolder": "logs/working_test"
+  },
+  "mask": true
+}

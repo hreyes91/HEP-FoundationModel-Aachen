@@ -1,0 +1,21 @@
+# Folder
+models*
+figures*
+samples/*
+samples_cluster/*
+samples_tests*
+*egg-inf*
+particlenet/configs/*
+
+
+__init__.py
+__pycache__*
+jobscript*
+*.npy
+*.npz
+*.ipynb
+*.pt
+*.png
+*.pdf
+
+logs*
