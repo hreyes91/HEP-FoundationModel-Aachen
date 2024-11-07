@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from helpers_train import (
     get_cos_scheduler,
@@ -48,7 +48,7 @@ def parse_input():
         help="Path to signal data file",
     )
     parser.add_argument(
-        "--seed", type=int, default=0, help="the random seed for torch and numpy"
+        "--seed", type=int, default=None, help="the random seed for torch and numpy"
     )
     parser.add_argument(
         "--logging_steps", type=int, default=10, help="Training steps between logging"
@@ -113,7 +113,7 @@ def parse_input():
 
 def load_data(file):
     if file.endswith("npz"):
-        random_indices = np.random.choice(9000000, size=args.num_events, replace=False)
+        random_indices = np.random.choice(999999, size=args.num_events, replace=False)
         #dat = np.load(file)["jets"][: args.num_events, : args.num_const]
         dat = np.load(file)["jets"][random_indices, : args.num_const]
         print('data')
@@ -163,14 +163,14 @@ def get_dataloader(
     padding_mask = torch.tensor(padding_mask[idx])
 
     train_set = TensorDataset(
-        dat[: int(0.9 * len(dat))],
-        padding_mask[: int(0.9 * len(dat))],
-        lab[: int(0.9 * len(dat))],
+        dat[: int(0.8 * len(dat))],
+        padding_mask[: int(0.8 * len(dat))],
+        lab[: int(0.8 * len(dat))],
     )
     val_set = TensorDataset(
-        dat[int(0.9 * len(dat)) :],
-        padding_mask[int(0.9 * len(dat)) :],
-        lab[int(0.9 * len(dat)) :],
+        dat[int(0.8 * len(dat)) :],
+        padding_mask[int(0.8 * len(dat)) :],
+        lab[int(0.8 * len(dat)) :],
     )
     train_loader = DataLoader(
         train_set,

@@ -3,8 +3,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from argparse import ArgumentParser
-
-from model import JetTransformerClassifier
+import random
+from model_new import JetTransformerClassifier
 
 from tqdm import tqdm
 import pandas as pd
@@ -12,6 +12,10 @@ import os
 
 from sklearn.metrics import roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
+
+torch.multiprocessing.set_sharing_strategy("file_system")
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from helpers_train import (
     get_cos_scheduler,
@@ -44,7 +48,7 @@ def parse_input():
         help="Path to signal data file",
     )
     parser.add_argument(
-        "--seed", type=int, default=0, help="the random seed for torch and numpy"
+        "--seed", type=int, default=None, help="the random seed for torch and numpy"
     )
     parser.add_argument(
         "--logging_steps", type=int, default=10, help="Training steps between logging"
@@ -58,11 +62,6 @@ def parse_input():
     parser.add_argument(
         "--num_events", type=int, default=10000, help="Number of events for training"
     )
-    
-    #parser.add_argument(
-    #    "--num_const", type=int, default=100, help="Max Number of constituents"
-    #)
-    
     parser.add_argument(
         "--num_bins",
         type=int,
@@ -75,12 +74,21 @@ def parse_input():
         "--name_sufix", type=str, default="A1B2C3D", help="name of train dir"
     )
 
+
+    parser.add_argument(
+        "--fixed_samples",
+        action="store_true",
+        help="fixed samples",
+    )
+
     parser.add_argument("--num_epochs", type=int, default=3, help="Number of epochs")
     parser.add_argument("--batch_size", type=int, default=100, help="Batch size")
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
     parser.add_argument(
         "--weight_decay", type=float, default=0.00001, help="weight decay"
     )
+
+
 
     parser.add_argument(
         "--hidden_dim", type=int, default=256, help="Hidden dim of the model"
@@ -105,10 +113,29 @@ def parse_input():
 
 def load_data(file):
     if file.endswith("npz"):
-        dat = np.load(file)["jets"][: args.num_events, : args.num_const]
+        random_indices = np.random.choice(999999, size=args.num_events, replace=False)
+        #dat = np.load(file)["jets"][: args.num_events, : args.num_const]
+        dat = np.load(file)["jets"][random_indices, : args.num_const]
+        print('data')
+        print(dat)
     elif file.endswith("h5"):
-        dat = pd.read_hdf(file, key="discretized", stop=args.num_events)
+    
+        if args.fixed_samples==False:
+        
+            start_value=random.randint(0,1000000-args.num_events)
+            dat = pd.read_hdf(file, key="discretized", start=start_value, stop=start_value+args.num_events)
+
+        else:
+    
+            dat = pd.read_hdf(file, key="discretized", stop=args.num_events)
+        
+        
+        
         dat = dat.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+        print('dat')
+        print(dat)
+        
+        
         dat = dat.reshape(dat.shape[0], -1, 3)
     else:
         assert False, "Filetype for bg not supported"
@@ -136,14 +163,14 @@ def get_dataloader(
     padding_mask = torch.tensor(padding_mask[idx])
 
     train_set = TensorDataset(
-        dat[: int(0.9 * len(dat))],
-        padding_mask[: int(0.9 * len(dat))],
-        lab[: int(0.9 * len(dat))],
+        dat[: int(0.8 * len(dat))],
+        padding_mask[: int(0.8 * len(dat))],
+        lab[: int(0.8 * len(dat))],
     )
     val_set = TensorDataset(
-        dat[int(0.9 * len(dat)) :],
-        padding_mask[int(0.9 * len(dat)) :],
-        lab[int(0.9 * len(dat)) :],
+        dat[int(0.8 * len(dat)) :],
+        padding_mask[int(0.8 * len(dat)) :],
+        lab[int(0.8 * len(dat)) :],
     )
     train_loader = DataLoader(
         train_set,
@@ -180,7 +207,7 @@ def plot_rocs(model, val_loader, tag):
     labels = np.concatenate(labels, 0)
     fpr, tpr, _ = roc_curve(labels, preds)
     auc = roc_auc_score(labels, preds)
-
+    print(auc)
     fig, ax = plt.subplots(constrained_layout=True)
     ax.plot(tpr, 1.0 / fpr, label=f"AUC {auc}")
     ax.set_yscale("log")
@@ -196,8 +223,7 @@ def plot_rocs(model, val_loader, tag):
     fig.savefig(os.path.join(args.log_dir, f"preds_{tag}.png"))
 
     np.savez(os.path.join(args.log_dir, f"preds_{tag}.npz"), preds=preds, labels=labels)
-
-
+    plt.close(fig)
 if __name__ == "__main__":
     args = parse_input()
     save_arguments(args)
@@ -239,17 +265,25 @@ if __name__ == "__main__":
     logger = SummaryWriter(args.log_dir)
     global_step = 0
     loss_list = []
+    
+        
+    loss_list_epoch=[]
+    val_list_epoch=[]
+    
     perplexity_list = []
     min_val_loss = np.inf
     for epoch in range(args.num_epochs):
         model.train()
-
+        loss_list_here=[]
         for x, padding_mask, label in tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}"
         ):
             opt.zero_grad()
+
             x = x.to(device)
+
             padding_mask = padding_mask.to(device)
+        
             label = label.to(device)
 
             with torch.cuda.amp.autocast():
@@ -262,7 +296,8 @@ if __name__ == "__main__":
             scheduler.step()
 
             loss_list.append(loss.cpu().detach().numpy())
-
+            loss_list_here.append(loss.cpu().detach().numpy())
+            
             if (global_step + 1) % args.logging_steps == 0:
                 logger.add_scalar("Train/Loss", np.mean(loss_list), global_step)
                 logger.add_scalar("Train/LR", scheduler.get_last_lr()[0], global_step)
@@ -288,7 +323,7 @@ if __name__ == "__main__":
                 )
                 loss = model.loss(logits, label.view(-1, 1))
                 val_loss.append(loss.cpu().detach().numpy())
-
+            val_loss_here=val_loss
             val_loss = np.mean(val_loss)
             if val_loss < min_val_loss:
                 min_val_loss = val_loss
@@ -299,7 +334,41 @@ if __name__ == "__main__":
         save_opt_states(
             optimizer=opt, scheduler=scheduler, scaler=scaler, log_dir=args.log_dir
         )
-
+        
+        
+        print(len(loss_list_here))
+        print(len(val_loss_here))
+        
+        mean_loss=np.mean(loss_list_here)
+        mean_val=val_loss
+        loss_list_epoch.append(mean_loss)
+        val_list_epoch.append(mean_val)
+    
+    
+    
+    print(len(loss_list_epoch))
+    print(len(val_list_epoch))
+    history={'loss':loss_list_epoch,'val_loss':val_list_epoch}
+    
+    history_frame=pd.DataFrame(history)
+    history_frame.to_csv(os.path.join(args.log_dir, "history.txt"),index=False)
+    
+    
+    
     plot_rocs(model, val_loader, tag="last")
     model = load_model(os.path.join(args.log_dir, "model_best.pt"))
     plot_rocs(model, val_loader, tag="best")
+
+
+
+plt.close()
+plt.close()
+import matplotlib.pyplot as plt
+plt.plot(history_frame['loss'], label='Train Loss')
+plt.plot(history_frame['val_loss'], label='Val Loss')
+plt.xlabel('iter')
+plt.ylabel('Loss')
+plt.yscale('log')
+plt.legend()
+plt.savefig(os.path.join(args.log_dir, "history.pdf"))
+plt.close()
