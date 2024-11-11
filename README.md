@@ -14,6 +14,7 @@ Foundation models for High Energy Physics.
 
 ```bash
 conda env create --name new_env_name --file torch_env_pip_env.yml
+conda activate new_env_name
 
 ```
 # Train backbone
