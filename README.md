@@ -38,3 +38,18 @@ python sample_jets.py --model_dir <model-dir> --savetag <samples-tag-name>  --nu
 python evaluate_probabilities.py --model <model-dir>+/model_best.pt +' --data /net/data_ttk/hreyes/JetClass/discretized/OneBin/TTBar_test___1Mfromeach_403030.h5 --tag <evals-tag-name> --num_const 128  --num_events 128 --fixed_samples
 
 ```
+
+# Train classifier
+
+
+```python
+python train_classifier.py   --log_dir <c-model-dir> --bg /net/data_ttk/hreyes/JetClass/discretized/OneBin/ZJetsToNuNu_train___1Mfromeach_403030.h5 --sig /net/data_ttk/hreyes/JetClass/discretized/OneBin/TTBar_train___1Mfromeach_403030.h5 --num_const 128 --num_epochs 5  --lr 0.001 --batch_size 100 --num_events 100 --dropout 0.0 --num_heads 4 --num_layers 8 --hidden_dim 256 --name_sufix 4PTCYEG --fixed_samples
+
+```
+
+
+# Test classifier
+
+```python
+python test_classifier.py --data_path_1 /net/data_ttk/hreyes/JetClass/discretized/OneBin/TTBar_train___1Mfromeach_403030.h5 --data_path_2 /net/data_ttk/hreyes/JetClass/discretized/OneBin/ZJetsToNuNu_train___1Mfromeach_403030.h5 --model_dir <c-model-dir>  --num_events 100 --num_const 128
+```
