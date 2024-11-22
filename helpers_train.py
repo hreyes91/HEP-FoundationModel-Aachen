@@ -109,7 +109,7 @@ def parse_input():
         help="Path to file for sampling. If none given, sample from model",
     )
     parser.add_argument(
-        "--seed", type=int, default=0, help="the random seed for torch and numpy"
+        "--seed", type=int, default=None, help="the random seed for torch and numpy"
     )
     parser.add_argument(
         "--logging_steps", type=int, default=10, help="Training steps between logging"
@@ -223,8 +223,13 @@ def save_arguments(args):
 
 
 def set_seeds(seed):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+    else:
+        #torch.manual_seed(seed)
+        np.random.seed(None)
+        
 
 
 def load_data(

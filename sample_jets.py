@@ -4,15 +4,11 @@ import pandas as pd
 from tqdm import tqdm
 import time, os
 from argparse import ArgumentParser
-
+from helpers_train import set_seeds
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-
-def set_seeds(seed):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
 
 
 parser = ArgumentParser()
@@ -22,7 +18,7 @@ parser.add_argument("--savetag", type=str, default="test")
 parser.add_argument("--num_samples", type=int, default=1000)
 parser.add_argument("--batchsize", type=int, default=100)
 parser.add_argument("--num_const", type=int, default=50)
-parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--seed", type=int, default=None)
 parser.add_argument("--trunc", type=float, default=None)
 
 args = parser.parse_args()
