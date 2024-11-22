@@ -35,7 +35,7 @@ python sample_jets.py --model_dir <model-dir> --savetag <samples-tag-name>  --nu
 
 ```python
 
-python evaluate_probabilities.py --model <model-dir>+/model_best.pt +' --data /net/data_ttk/hreyes/JetClass/discretized/OneBin/TTBar_test___1Mfromeach_403030.h5 --tag <evals-tag-name> --num_const 128  --num_events 128 --fixed_samples
+python evaluate_probabilities.py --model <model-dir>+/model_best.pt  --data /net/data_ttk/hreyes/JetClass/discretized/OneBin/TTBar_test___1Mfromeach_403030.h5 --tag <evals-tag-name> --num_const 128  --num_events 128 --fixed_samples
 
 ```
 
