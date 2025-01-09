@@ -251,9 +251,9 @@ def discretize_data(
 
         
         print('preprocessing bins should exist')
-        pt_bins = np.load(f"preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
-        eta_bins = np.load(f"preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
-        phi_bins = np.load(f"preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
+        pt_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
+        eta_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
+        phi_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
         print(f"\nLoaded bins with tag {tag}\n")
         return pt_bins, eta_bins, phi_bins
 
