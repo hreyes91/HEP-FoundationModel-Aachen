@@ -11,6 +11,7 @@ from torch.nn import (
     Dropout,
 )
 
+from torch import nn
 
 class EmbeddingProductHead(Module):
     def __init__(self, hidden_dim=256, num_features=3, num_bins=(41, 41, 41)):
@@ -53,7 +54,7 @@ class JetClassifierWithClassAttention(Module):
         self.num_features = num_features
 
         # Feature embeddings (shared across all constituents)
-        self.feature_embeddings = nn.ModuleList([
+        self.feature_embeddings = ModuleList([
             Embedding(num_embeddings=num_bins[l], embedding_dim=hidden_dim) for l in range(num_features)
         ])
 
