@@ -75,7 +75,7 @@ class JetClassifierWithClassAttention(Module):
         self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))  # Learnable CLS token
         
         
-      self.cls_transformer_layers = nn.ModuleList([
+        self.cls_transformer_layers = nn.ModuleList([
             TransformerEncoderLayer(
                 d_model=hidden_dim,
                 nhead=num_heads,
