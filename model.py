@@ -116,9 +116,11 @@ class JetClassifierWithClassAttention(Module):
         cls_token = self.cls_token.expand(batch_size, -1, -1)  # Shape: (batch, 1, hidden_dim)
         emb = torch.cat([cls_token, emb], dim=1)  # Append CLS token to sequence
 
-        # === (4) Process CLS Token Through Its Own Transformer ===
-        emb = self.cls_transformer(emb)  # Single TransformerEncoderLayer for classification
-
+        # === (4) Process CLS Token Through Multi-Layer Transformer ===
+        for layer in self.cls_transformer_layers:
+            emb = layer(emb)
+            
+            
         # === (5) Extract CLS Token and Classify ===
         cls_embedding = emb[:, 0, :]  # CLS token embedding
         cls_embedding = self.out_norm(cls_embedding)
