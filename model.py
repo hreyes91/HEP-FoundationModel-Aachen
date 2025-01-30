@@ -47,7 +47,7 @@ class JetClassifierWithClassAttention(Module):
         num_heads=4,
         num_features=3,
         num_bins=(41, 31, 31),
-        dropout=0.1,
+        dropout=0.0,
         num_const=128):
         super().__init__()
         self.num_const = num_const
@@ -120,13 +120,28 @@ class JetClassifierWithClassAttention(Module):
         for layer in self.cls_transformer_layers:
             emb = layer(emb)
             
-            
+        '''
         # === (5) Extract CLS Token and Classify ===
         cls_embedding = emb[:, 0, :]  # CLS token embedding
         cls_embedding = self.out_norm(cls_embedding)
         cls_embedding = self.dropout(cls_embedding)
         logits = self.out(cls_embedding).squeeze(-1)  # Output shape: (batch,)
+        '''
+        
+      # === (5) Extract CLS Token & Compute Mean Pooling ===
+        cls_embedding = emb[:, 0, :]  # CLS token embedding
+        mean_pooling = emb[:, 1:, :].mean(dim=1)  # Mean over all jet constituents
 
+        # === (6) Concatenate CLS & Mean Pooling ===
+        jet_representation = torch.cat([cls_embedding, mean_pooling], dim=-1)
+
+        # === (7) Final Classification ===
+        jet_representation = self.out_norm(jet_representation)
+        jet_representation = self.dropout(jet_representation)
+        logits = self.out(jet_representation).squeeze(-1)
+        
+        
+        
         # === (6) Compute Loss (Optional) ===
         '''
         if targets is not None:
