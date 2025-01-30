@@ -289,7 +289,7 @@ if __name__ == "__main__":
 
             with torch.cuda.amp.autocast():
                 logits = model(x, padding_mask)
-                loss = model.loss(logits, label.view(-1, 1))
+                loss = model.loss(logits, label.view(-1))
 
             scaler.scale(loss).backward()
             scaler.step(opt)
