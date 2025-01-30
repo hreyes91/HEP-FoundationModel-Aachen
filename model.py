@@ -122,7 +122,7 @@ class JetClassifierWithClassAttention(nn.Module):
         return logits
             
     def loss(self, logits, true_bin):
-            loss = self.criterion(logits, true_bin)
+        loss = self.criterion(logits, true_bin)
         return loss
 
         
