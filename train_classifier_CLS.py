@@ -1,4 +1,5 @@
 import torch
+torch.cuda.empty_cache()
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
@@ -321,7 +322,7 @@ if __name__ == "__main__":
                     x,
                     padding_mask,
                 )
-                loss = model.loss(logits, label.view(-1, 1))
+                loss = model.loss(logits, label.view(-1))
                 val_loss.append(loss.cpu().detach().numpy())
             val_loss_here=val_loss
             val_loss = np.mean(val_loss)
