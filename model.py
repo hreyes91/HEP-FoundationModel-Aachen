@@ -213,7 +213,7 @@ class JetTransformerClassifier(Module):
         return out
 
     def loss(self, logits, true_bin):
-        true_bin = true_bin.view(-1)
+       
         loss = self.criterion(logits, true_bin)
         return loss
 
