@@ -39,7 +39,7 @@ class EmbeddingProductHead(Module):
 
 
 
-class JetClassifierWithClassAttention(nn.Module):
+class JetClassifierWithClassAttention(Module):
     def __init__(self, num_const, num_features, num_bins, hidden_dim=128, num_layers=4, num_heads=4, dropout=0.1):
         super().__init__()
         self.num_const = num_const
