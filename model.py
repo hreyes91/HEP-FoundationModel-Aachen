@@ -38,6 +38,101 @@ class EmbeddingProductHead(Module):
         return logits
 
 
+
+class JetClassifierWithClassAttention(nn.Module):
+    def __init__(self, num_const, num_features, num_bins, hidden_dim=128, num_layers=4, num_heads=4, dropout=0.1):
+        super().__init__()
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        self.num_features = num_features
+
+        # Feature embeddings (shared across all constituents)
+        self.feature_embeddings = nn.ModuleList([
+            Embedding(num_embeddings=num_bins[l], embedding_dim=hidden_dim) for l in range(num_features)
+        ])
+
+        # === Backbone: Pretrained Transformer Layers (Unchanged) ===
+        self.backbone_layers = nn.ModuleList([
+            TransformerEncoderLayer(
+                d_model=hidden_dim,
+                nhead=num_heads,
+                dim_feedforward=hidden_dim * 4,
+                batch_first=True,
+                norm_first=True,
+                dropout=dropout
+            ) for _ in range(num_layers)
+        ])
+
+        # === Class Attention ===
+        self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))  # Learnable CLS token
+        self.cls_transformer = TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim * 4,
+            batch_first=True,
+            norm_first=True,
+            dropout=dropout
+        )
+
+        # Output layers
+        self.out_norm = LayerNorm(hidden_dim)
+        self.dropout = Dropout(dropout)
+        self.out = Linear(hidden_dim, 1)  # Binary classification head
+
+        # Loss function
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, x, padding_mask, targets=None):
+        batch_size, num_const, num_features = x.shape  # (batch, n_const, n_features)
+
+        # === (1) Embed Input Features ===
+        x[x < 0] = 0  # Handle negative values
+        emb = self.feature_embeddings[0](x[:, :, 0])  # First feature
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](x[:, :, i])  # Sum embeddings across features
+
+        # === (2) Pass Through Pretrained Backbone ===
+        seq_len = num_const
+        seq_idx = torch.arange(seq_len, dtype=torch.long, device=x.device)
+        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)  # Causal mask
+        padding_mask = ~padding_mask  # Invert mask for TransformerEncoderLayer
+
+        for layer in self.backbone_layers:
+            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+
+        # === (3) Inject CLS Token ===
+        cls_token = self.cls_token.expand(batch_size, -1, -1)  # Shape: (batch, 1, hidden_dim)
+        emb = torch.cat([cls_token, emb], dim=1)  # Append CLS token to sequence
+
+        # === (4) Process CLS Token Through Its Own Transformer ===
+        emb = self.cls_transformer(emb)  # Single TransformerEncoderLayer for classification
+
+        # === (5) Extract CLS Token and Classify ===
+        cls_embedding = emb[:, 0, :]  # CLS token embedding
+        cls_embedding = self.out_norm(cls_embedding)
+        cls_embedding = self.dropout(cls_embedding)
+        logits = self.out(cls_embedding).squeeze(-1)  # Output shape: (batch,)
+
+        # === (6) Compute Loss (Optional) ===
+        '''
+        if targets is not None:
+            loss = self.criterion(logits, targets.float())
+            return logits, loss
+        '''
+        return logits
+            
+    def loss(self, logits, true_bin):
+            loss = self.criterion(logits, true_bin)
+        return loss
+
+        
+
+
+
+
+
+
+
 class JetTransformerClassifier(Module):
     def __init__(
         self,
