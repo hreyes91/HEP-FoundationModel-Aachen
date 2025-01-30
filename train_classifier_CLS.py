@@ -97,6 +97,11 @@ def parse_input():
     parser.add_argument(
         "--num_layers", type=int, default=8, help="Number of transformer layers"
     )
+    
+    
+        parser.add_argument(
+        "--num_cls_layers", type=int, default=2, help="Number of transformer layers"
+    )
     parser.add_argument(
         "--num_heads", type=int, default=4, help="Number of attention heads"
     )
@@ -245,6 +250,7 @@ if __name__ == "__main__":
     model = JetClassifierWithClassAttention(
         hidden_dim=args.hidden_dim,
         num_layers=args.num_layers,
+            num_cls_layers=args.num_cls_layers,
         num_heads=args.num_heads,
         num_features=num_features,
         dropout=args.dropout,

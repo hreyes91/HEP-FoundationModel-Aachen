@@ -43,11 +43,12 @@ class EmbeddingProductHead(Module):
 class JetClassifierWithClassAttention(Module):
     def __init__(self,         hidden_dim=256,
         num_layers=10,
+        num_cls_layers=2,
         num_heads=4,
         num_features=3,
         num_bins=(41, 31, 31),
         dropout=0.1,
-        num_const=100):
+        num_const=128):
         super().__init__()
         self.num_const = num_const
         self.hidden_dim = hidden_dim
@@ -72,14 +73,18 @@ class JetClassifierWithClassAttention(Module):
 
         # === Class Attention ===
         self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))  # Learnable CLS token
-        self.cls_transformer = TransformerEncoderLayer(
-            d_model=hidden_dim,
-            nhead=num_heads,
-            dim_feedforward=hidden_dim * 4,
-            batch_first=True,
-            norm_first=True,
-            dropout=dropout
-        )
+        
+        
+      self.cls_transformer_layers = nn.ModuleList([
+            TransformerEncoderLayer(
+                d_model=hidden_dim,
+                nhead=num_heads,
+                dim_feedforward=hidden_dim * 4,
+                batch_first=True,
+                norm_first=True,
+                dropout=dropout
+            ) for _ in range(num_cls_layers)  # Number of class attention layers
+        ])
 
         # Output layers
         self.out_norm = LayerNorm(hidden_dim)
