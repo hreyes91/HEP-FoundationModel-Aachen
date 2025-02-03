@@ -217,6 +217,12 @@ class JetClassifierWithClassAttentionAndFeatures(nn.Module):
         logits = self.out(jet_representation).squeeze(-1)  # Output shape: (batch,)
 
         return logits
+        
+        
+    def loss(self, logits, true_bin):
+        true_bin = true_bin.float().view(-1)  # Fix: Ensure shape is (batch,)
+        return self.criterion(logits, true_bin)
+
 
 
 
