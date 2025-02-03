@@ -280,7 +280,7 @@ def plot_rocs(model, val_loader, tag):
 
             logits = model(
                 x,
-                padding_mask,
+                padding_mask,jet_mass
             )
             preds.append(logits.cpu().numpy())
             labels.append(label.cpu().numpy())
@@ -370,7 +370,7 @@ if __name__ == "__main__":
             label = label.to(device)
 
             with torch.cuda.amp.autocast():
-                logits = model(x, padding_mask)
+                logits = model(x, padding_mask,jet_mass)
                 loss = model.loss(logits, label.view(-1))
 
             scaler.scale(loss).backward()
@@ -402,7 +402,7 @@ if __name__ == "__main__":
 
                 logits = model(
                     x,
-                    padding_mask,
+                    padding_mask,jet_mass
                 )
                 loss = model.loss(logits, label.view(-1))
                 val_loss.append(loss.cpu().detach().numpy())
