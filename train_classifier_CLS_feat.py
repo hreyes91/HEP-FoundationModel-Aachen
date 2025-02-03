@@ -226,7 +226,7 @@ def get_dataloader(
 
     _, _, jet_mass=make_continues(dat, mask, noise=False)
     
-    jet_mass = jet_mass.to(torch.float32)
+    jet_mass = torch.tensor(jet_mass, dtype=torch.float32)
     print(jet_mass)
     print(len(jet_mass))
     print(len(dat))
