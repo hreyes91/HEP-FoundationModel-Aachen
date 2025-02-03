@@ -199,7 +199,7 @@ for sig in sig_list:
                                                     
                                                     model_dir=log_dir+'_'+name_sufix
                                                     
-                                                    test_command='python test_classifier_cls.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
+                                                    test_command='python test_classifier_cls_feat.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
                                                     
                                                     os.system(test_command)
                                                     TestResults(dict_auc,model_dir,r_tresh)
