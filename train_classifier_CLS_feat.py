@@ -222,10 +222,9 @@ def get_dataloader(
     print(f"Using bg {bg.shape} from {bgf} and sig {sig.shape} from {sigf}")
 
     dat = np.concatenate((bg, sig), 0)
-    
-    print(dat)
-    exit()
-    make_continues(jets, mask, noise=False)
+    mask = dar[:, :, 0] == -
+
+    _, _, jet_mass=make_continues(dat, mask, noise=False)
     
     
     lab = np.append(np.zeros(len(bg)), np.ones(len(sig)))
@@ -239,17 +238,19 @@ def get_dataloader(
     train_set = TensorDataset(
         dat[: int(0.8 * len(dat))],
         padding_mask[: int(0.8 * len(dat))],
+        jet_mass[: int(0.8 * len(dat))],
         lab[: int(0.8 * len(dat))],
     )
     val_set = TensorDataset(
         dat[int(0.8 * len(dat)) :],
         padding_mask[int(0.8 * len(dat)) :],
+        jet_mass[int(0.8 * len(dat)) :],
         lab[int(0.8 * len(dat)) :],
     )
     train_loader = DataLoader(
         train_set,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=False,
     )
     val_loader = DataLoader(
         val_set,
