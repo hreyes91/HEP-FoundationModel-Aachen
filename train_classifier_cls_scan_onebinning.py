@@ -203,7 +203,7 @@ for sig in sig_list:
                                                     
                                                     os.system(test_command)
                                                     TestResults(dict_auc,model_dir,r_tresh)
-
+                                                    dict_auc.get('suffix').append(name_sufix)
 
 
 
