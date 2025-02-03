@@ -79,10 +79,16 @@ def preprocess_dataframe_features(
 ):
     x = df.to_numpy(dtype=np.int64)[:, : num_const * num_features]
     
+
+
+    x = x.reshape(x.shape[0], -1, num_features)
     mask = x[:, :, 0] == -1
     _,_,jet_mass=make_continues(x, mask, noise=False)
     jet_mass = torch.tensor(jet_mass, dtype=torch.float32)
-    x = x.reshape(x.shape[0], -1, num_features)
+    
+    
+    
+    
     padding_mask = x[:, :, 0] != -1
 
     if limit_nconst:
