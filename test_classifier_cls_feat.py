@@ -83,7 +83,7 @@ def load_data(path1,path2, n_events):
     
     padding_mask = torch.concat((padding_mask, padding_mask1), dim=0)
 
-    train_dataset = TensorDataset(x, padding_mask, labels)
+    train_dataset = TensorDataset(x, padding_mask,jet_mass, labels)
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     logits_list=[]
     min_val_loss = np.inf
     with torch.no_grad():
-        for x, padding_mask, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
+        for x, padding_mask,jet_mass, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
             label_list.append(label.detach().numpy())
             x = x.to(device)
             padding_mask = padding_mask.to(device)
@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
             #with torch.no_grad():
             #with torch.cuda.amp.autocast():
-            logits = model(x, padding_mask)
+            logits = model(x, padding_mask,jet_mass)
             predictions = torch.sigmoid(logits)
             loss = model.loss(logits, label.view(-1))
 
