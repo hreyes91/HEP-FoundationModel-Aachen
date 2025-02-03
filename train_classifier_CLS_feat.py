@@ -231,7 +231,7 @@ def get_dataloader(
     print(len(dat))
     
     print('len see above')
-    exit()
+    
     
     lab = np.append(np.zeros(len(bg)), np.ones(len(sig)))
     padding_mask = dat[:, :, 0] != 0
