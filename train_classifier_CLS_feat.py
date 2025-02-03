@@ -226,6 +226,10 @@ def get_dataloader(
 
     _, _, jet_mass=make_continues(dat, mask, noise=False)
     
+    print(jet_mass)
+    print(len(jet_mass))
+    print(len(dat))
+    exit()
     
     lab = np.append(np.zeros(len(bg)), np.ones(len(sig)))
     padding_mask = dat[:, :, 0] != 0
