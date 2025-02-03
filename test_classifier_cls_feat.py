@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
-from preprocess import preprocess_dataframe
+from preprocess import preprocess_dataframe_features as preprocess_dataframe
 
 from argparse import ArgumentParser
 from tqdm import tqdm
@@ -43,64 +43,7 @@ def parse_input():
 
 
 
-def LoadBins():
-    bins_path_prefix='/net/data_ttk/hreyes/OneBin/preprocessing_bins/'
-    pt_bins = np.load(bins_path_prefix+'pt_bins_1Mfromeach_403030.npy')
-    eta_bins = np.load(bins_path_prefix+'eta_bins_1Mfromeach_403030.npy')
-    phi_bins = np.load(bins_path_prefix+'phi_bins_1Mfromeach_403030.npy')
-    print('pt_bins')
 
-    return pt_bins,eta_bins,phi_bins
-
-
-def make_continues(jets, mask, noise=False):
-
-
-    pt_bins,eta_bins,phi_bins=LoadBins()
-
-    pt_disc = jets[:, :, 0]
-    eta_disc = jets[:, :, 1]
-    phi_disc = jets[:, :, 2]
-
-    if noise:
-        print('hello noise')
-        pt_con = (pt_disc - np.random.uniform(0.0, 1.0, size=pt_disc.shape)) * (
-            pt_bins[1] - pt_bins[0]
-        ) + pt_bins[0]
-        eta_con = (eta_disc - np.random.uniform(0.0, 1.0, size=eta_disc.shape)) * (
-            eta_bins[1] - eta_bins[0]
-        ) + eta_bins[0]
-        phi_con = (phi_disc - np.random.uniform(0.0, 1.0, size=phi_disc.shape)) * (
-            phi_bins[1] - phi_bins[0]
-        ) + phi_bins[0]
-    else:
-        print(' discrete discrete ')
-        pt_con = (pt_disc - 0.5) * (pt_bins[1] - pt_bins[0]) + pt_bins[0]
-        eta_con = (eta_disc - 0.5) * (eta_bins[1] - eta_bins[0]) + eta_bins[0]
-        phi_con = (phi_disc - 0.5) * (phi_bins[1] - phi_bins[0]) + phi_bins[0]
-
-
-    pt_con = np.exp(pt_con)
-    pt_con[mask] = 0.0
-    eta_con[mask] = 0.0
-    phi_con[mask] = 0.0
-    
-    pxs = np.cos(phi_con) * pt_con
-    pys = np.sin(phi_con) * pt_con
-    pzs = np.sinh(eta_con) * pt_con
-    es = (pxs ** 2 + pys ** 2 + pzs ** 2) ** (1. / 2)
-
-    pxj = np.sum(pxs, -1)
-    pyj = np.sum(pys, -1)
-    pzj = np.sum(pzs, -1)
-    ej = np.sum(es, -1)
-    
-    ptj = np.sqrt(pxj**2 + pyj**2)
-    mj = (ej ** 2 - pxj ** 2 - pyj ** 2 - pzj ** 2) ** (1. / 2)
-
-    continues_jets = np.stack((pt_con, eta_con, phi_con), -1)
-
-    return continues_jets, ptj, mj
 
 
 
@@ -113,7 +56,7 @@ def load_data(path1,path2, n_events):
     #start_value=random.randint(0,1000000-args.num_events)
     #df = pd.read_hdf(path1, key="discretized", start=start_value, stop=start_value+args.num_events)
     
-    x, padding_mask, _ = preprocess_dataframe(df, num_features=num_features,
+    x, padding_mask, _,jet_mass = preprocess_dataframe(df, num_features=num_features,
                                 num_bins=num_bins,
                                 to_tensor=True,
                                 num_const=args.num_const,
@@ -122,7 +65,7 @@ def load_data(path1,path2, n_events):
     labels = torch.ones(len(x))
 
     df = pd.read_hdf(path2, 'discretized', stop=n_events)
-    x1, padding_mask1, _ = preprocess_dataframe(df, num_features=num_features,
+    x1, padding_mask1, _,jet_mass1 = preprocess_dataframe(df, num_features=num_features,
                                 num_bins=num_bins,
                                 to_tensor=True,
                                 num_const=args.num_const,
@@ -132,6 +75,7 @@ def load_data(path1,path2, n_events):
                                 
                                 
     labels = torch.concat((labels, torch.zeros(len(x1))))
+    jet_mass = torch.concat((jet_mass, jet_mass1))
     x = torch.concat((x, x1), dim=0)
     print(x)
     print(len(x))

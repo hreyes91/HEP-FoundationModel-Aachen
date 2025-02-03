@@ -5,6 +5,140 @@ import os
 from tqdm import tqdm
 
 
+
+
+def LoadBins():
+    bins_path_prefix='/net/data_ttk/hreyes/OneBin/preprocessing_bins/'
+    pt_bins = np.load(bins_path_prefix+'pt_bins_1Mfromeach_403030.npy')
+    eta_bins = np.load(bins_path_prefix+'eta_bins_1Mfromeach_403030.npy')
+    phi_bins = np.load(bins_path_prefix+'phi_bins_1Mfromeach_403030.npy')
+    print('pt_bins')
+
+    return pt_bins,eta_bins,phi_bins
+
+
+def make_continues(jets, mask, noise=False):
+
+
+    pt_bins,eta_bins,phi_bins=LoadBins()
+
+    pt_disc = jets[:, :, 0]
+    eta_disc = jets[:, :, 1]
+    phi_disc = jets[:, :, 2]
+
+    if noise:
+        print('hello noise')
+        pt_con = (pt_disc - np.random.uniform(0.0, 1.0, size=pt_disc.shape)) * (
+            pt_bins[1] - pt_bins[0]
+        ) + pt_bins[0]
+        eta_con = (eta_disc - np.random.uniform(0.0, 1.0, size=eta_disc.shape)) * (
+            eta_bins[1] - eta_bins[0]
+        ) + eta_bins[0]
+        phi_con = (phi_disc - np.random.uniform(0.0, 1.0, size=phi_disc.shape)) * (
+            phi_bins[1] - phi_bins[0]
+        ) + phi_bins[0]
+    else:
+        print(' discrete discrete ')
+        pt_con = (pt_disc - 0.5) * (pt_bins[1] - pt_bins[0]) + pt_bins[0]
+        eta_con = (eta_disc - 0.5) * (eta_bins[1] - eta_bins[0]) + eta_bins[0]
+        phi_con = (phi_disc - 0.5) * (phi_bins[1] - phi_bins[0]) + phi_bins[0]
+
+
+    pt_con = np.exp(pt_con)
+    pt_con[mask] = 0.0
+    eta_con[mask] = 0.0
+    phi_con[mask] = 0.0
+    
+    pxs = np.cos(phi_con) * pt_con
+    pys = np.sin(phi_con) * pt_con
+    pzs = np.sinh(eta_con) * pt_con
+    es = (pxs ** 2 + pys ** 2 + pzs ** 2) ** (1. / 2)
+
+    pxj = np.sum(pxs, -1)
+    pyj = np.sum(pys, -1)
+    pzj = np.sum(pzs, -1)
+    ej = np.sum(es, -1)
+    
+    ptj = np.sqrt(pxj**2 + pyj**2)
+    mj = (ej ** 2 - pxj ** 2 - pyj ** 2 - pzj ** 2) ** (1. / 2)
+
+    continues_jets = np.stack((pt_con, eta_con, phi_con), -1)
+
+    return continues_jets, ptj, mj
+
+def preprocess_dataframe_features(
+    df,
+    num_features,
+    num_bins,
+    num_const,
+    to_tensor=True,
+    reverse=False,
+    start=False,
+    end=False,
+    limit_nconst=False,
+):
+    x = df.to_numpy(dtype=np.int64)[:, : num_const * num_features]
+    
+    _,_,jet_mass=make_continues(jets, mask, noise=False):
+    jet_mass = torch.tensor(jet_mass, dtype=torch.float32)
+    x = x.reshape(x.shape[0], -1, num_features)
+    padding_mask = x[:, :, 0] != -1
+
+    if limit_nconst:
+        keepings = padding_mask.sum(-1) >= num_const
+        x = x[keepings]
+        padding_mask = padding_mask[keepings]
+
+    if reverse:
+        print("Reversing pt order")
+        x[x == -1] = np.max(num_bins) + 10
+        idx_sort = np.argsort(x[:, :, 0], axis=-1)
+        for i in range(len(x)):
+            x[i] = x[i, idx_sort[i]]
+        x[x == np.max(num_bins) + 10] = -1
+
+    num_prior_bins = np.cumprod((1,) + num_bins[:-1])
+    bins = (x * num_prior_bins.reshape(1, 1, num_features)).sum(axis=2)
+
+    if start:
+        print("Adding start particles")
+        bins = np.concatenate(
+            (np.ones((len(bins), 1), dtype=int) * -100, bins),
+            axis=1,
+        )
+
+        x = np.concatenate(
+            (
+                np.zeros((len(x), 1, num_features), dtype=int),
+                x,
+            ),
+            axis=1,
+        )
+        padding_mask = x[:, :, 0] != -1
+        bins[~padding_mask] = -100
+    else:
+        bins[~padding_mask] = -100
+
+    if end:
+        print("Adding stop token")
+        seq_lengths = padding_mask.sum(-1)
+        x = np.append(x, -np.ones((x.shape[0], 1, x.shape[2]), dtype=int), axis=1)
+        x[np.arange(x.shape[0]), seq_lengths] = 0
+        x = x[:, :-1]
+        bins = np.append(bins, -100 * np.ones((bins.shape[0], 1)).astype(int), axis=1)
+        bins[np.arange(bins.shape[0]), seq_lengths] = np.prod(num_bins)
+        bins = bins[:, :-1]
+        padding_mask = x[:, :, 0] != -1
+
+    if to_tensor:
+        x = torch.tensor(x)
+        padding_mask = torch.tensor(padding_mask)
+        bins = torch.tensor(bins)
+    print(f"Shapes: {x.shape=} {padding_mask.shape=} {bins.shape=}")
+    return x, padding_mask, bins,jet_mass
+
+
+
 def preprocess_dataframe(
     df,
     num_features,
@@ -17,6 +151,9 @@ def preprocess_dataframe(
     limit_nconst=False,
 ):
     x = df.to_numpy(dtype=np.int64)[:, : num_const * num_features]
+    
+    
+    
     x = x.reshape(x.shape[0], -1, num_features)
     padding_mask = x[:, :, 0] != -1
 
