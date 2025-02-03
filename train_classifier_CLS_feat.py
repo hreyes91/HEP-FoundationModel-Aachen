@@ -240,6 +240,7 @@ def get_dataloader(
     dat = torch.tensor(dat[idx])
     lab = torch.tensor(lab[idx])
     padding_mask = torch.tensor(padding_mask[idx])
+    jet_mass= torch.tensor(jet_mass[idx])
 
     train_set = TensorDataset(
         dat[: int(0.8 * len(dat))],
