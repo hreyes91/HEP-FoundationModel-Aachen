@@ -272,13 +272,13 @@ def plot_rocs(model, val_loader, tag):
     preds = []
     model.eval()
     with torch.no_grad():
-        for x, padding_mask, label in tqdm(
+        for x, padding_mask, jet_mass,label in tqdm(
             val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}"
         ):
             x = x.to(device)
             padding_mask = padding_mask.to(device)
             label = label.to(device)
-
+            jet_mass=jet_mass.to(device)
             logits = model(
                 x,
                 padding_mask,jet_mass
