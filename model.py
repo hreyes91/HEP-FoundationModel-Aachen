@@ -41,14 +41,9 @@ class EmbeddingProductHead(Module):
 
 
 class JetClassifierWithClassAttention(Module):
-    def __init__(self,         hidden_dim=256,
-        num_layers=10,
-        num_cls_layers=2,
-        num_heads=4,
-        num_features=3,
-        num_bins=(41, 31, 31),
-        dropout=0.0,
-        num_const=128):
+    def __init__(self, hidden_dim=256, num_layers=10, num_cls_layers=2,
+                 num_heads=4, num_features=3, num_bins=(41, 31, 31),
+                 dropout=0.0, num_const=128):
         super().__init__()
         self.num_const = num_const
         self.hidden_dim = hidden_dim
@@ -59,7 +54,7 @@ class JetClassifierWithClassAttention(Module):
             Embedding(num_embeddings=num_bins[l], embedding_dim=hidden_dim) for l in range(num_features)
         ])
 
-        # === Backbone: Pretrained Transformer Layers (Unchanged) ===
+        # === Backbone: Pretrained Transformer Layers ===
         self.backbone_layers = nn.ModuleList([
             TransformerEncoderLayer(
                 d_model=hidden_dim,
@@ -71,10 +66,9 @@ class JetClassifierWithClassAttention(Module):
             ) for _ in range(num_layers)
         ])
 
-        # === Class Attention ===
+        # === Class Attention Transformer ===
         self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))  # Learnable CLS token
-        
-        
+
         self.cls_transformer_layers = nn.ModuleList([
             TransformerEncoderLayer(
                 d_model=hidden_dim,
@@ -83,13 +77,13 @@ class JetClassifierWithClassAttention(Module):
                 batch_first=True,
                 norm_first=True,
                 dropout=dropout
-            ) for _ in range(num_cls_layers)  # Number of class attention layers
+            ) for _ in range(num_cls_layers)
         ])
 
-        # Output layers
-        self.out_norm = LayerNorm(2*hidden_dim)
+        # === Output Layers ===
+        self.out_norm = LayerNorm(2*self.hidden_dim)  # Fix: Adjusted for concatenated CLS + Mean Pooling
         self.dropout = Dropout(dropout)
-        self.out = Linear(hidden_dim, 1)  # Binary classification head
+        self.out = Linear(2*self.hidden_dim, 1)  # Fix: Adjusted for new representation size
 
         # Loss function
         self.criterion = nn.BCEWithLogitsLoss()
@@ -103,67 +97,36 @@ class JetClassifierWithClassAttention(Module):
         for i in range(1, self.num_features):
             emb += self.feature_embeddings[i](x[:, :, i])  # Sum embeddings across features
 
-        # === (2) Pass Through Pretrained Backbone ===
-        seq_len = num_const
-        seq_idx = torch.arange(seq_len, dtype=torch.long, device=x.device)
-        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)  # Causal mask
-        padding_mask = ~padding_mask  # Invert mask for TransformerEncoderLayer
-
+        # === (2) Pass Through Backbone ===
+        padding_mask = ~padding_mask  # Invert mask for Transformer
         for layer in self.backbone_layers:
-            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+            emb = layer(src=emb, src_key_padding_mask=padding_mask)
 
         # === (3) Inject CLS Token ===
-        cls_token = self.cls_token.expand(batch_size, -1, -1)  # Shape: (batch, 1, hidden_dim)
-        emb = torch.cat([cls_token, emb], dim=1)  # Append CLS token to sequence
+        cls_token = self.cls_token.expand(batch_size, -1, -1).to(x.device)  # Fix: Move CLS to same device as x
+        emb = torch.cat([cls_token, emb], dim=1)  # Append CLS token
 
-        # === (4) Process CLS Token Through Multi-Layer Transformer ===
+        # === (4) Process CLS Token Through Transformer ===
         for layer in self.cls_transformer_layers:
             emb = layer(emb)
-            
-        '''
-        # === (5) Extract CLS Token and Classify ===
-        cls_embedding = emb[:, 0, :]  # CLS token embedding
-        cls_embedding = self.out_norm(cls_embedding)
-        cls_embedding = self.dropout(cls_embedding)
-        logits = self.out(cls_embedding).squeeze(-1)  # Output shape: (batch,)
-        '''
-        
-      # === (5) Extract CLS Token & Compute Mean Pooling ===
 
+        # === (5) Extract CLS Token & Compute Mean Pooling ===
         cls_embedding = emb[:, 0, :]  # CLS token embedding
         mean_pooling = emb[:, 1:, :].mean(dim=1)  # Mean over all jet constituents
 
-         
-        self.proj = nn.Linear(2*self.hidden_dim, self.hidden_dim)  # Projection to match expected size
-    
-        self.out = nn.Linear(self.hidden_dim, 1) 
         # === (6) Concatenate CLS & Mean Pooling ===
         jet_representation = torch.cat([cls_embedding, mean_pooling], dim=-1)
-        
-        device = jet_representation.device
-        self.proj = self.proj.to(device)
-        jet_representation = self.proj(jet_representation)
 
         # === (7) Final Classification ===
         jet_representation = self.out_norm(jet_representation)
         jet_representation = self.dropout(jet_representation)
         logits = self.out(jet_representation).squeeze(-1)
-        
-        
-        
-        # === (6) Compute Loss (Optional) ===
-        '''
-        if targets is not None:
-            loss = self.criterion(logits, targets.float())
-            return logits, loss
-        '''
-        return logits
-            
-    def loss(self, logits, true_bin):
-        loss = self.criterion(logits, true_bin)
-        return loss
 
-        
+        return logits
+
+    def loss(self, logits, true_bin):
+        true_bin = true_bin.float().view(-1)  # Fix: Ensure shape is (batch,)
+        return self.criterion(logits, true_bin)
 
 
 
