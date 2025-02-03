@@ -400,6 +400,7 @@ if __name__ == "__main__":
                 x = x.to(device)
                 padding_mask = padding_mask.to(device)
                 label = label.to(device)
+                jet_mass = jet_mass.to(device)
 
                 logits = model(
                     x,
