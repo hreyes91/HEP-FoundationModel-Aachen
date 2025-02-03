@@ -394,7 +394,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             val_loss = []
             val_perplexity = []
-            for x, padding_mask, label in tqdm(
+            for x, padding_mask,jet_mass, label in tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}"
             ):
                 x = x.to(device)
