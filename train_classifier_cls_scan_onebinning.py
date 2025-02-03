@@ -94,7 +94,7 @@ def Accuracy(predictions,labels):
 
 def TestMetrics(predictions):
 
-    predictions=GetPredictions(model_dir)
+    
 
     labels=predictions['labels']
     predictions=predictions['predictions']
@@ -124,7 +124,7 @@ def TestResults(dict_auc,model_dir,r_tresh):
     print(num_events_train)
 
 
-
+    predictions=GetPredictions(model_dir)
     auc_score,r_val,acc=TestMetrics(predictions,r_tresh)
 
     dict_auc.get('num_events').append(num_events_train)
