@@ -79,7 +79,7 @@ def load_data(path1,path2, n_events):
     x = torch.concat((x, x1), dim=0)
     print(x)
     print(len(x))
-    exit()
+
     
     padding_mask = torch.concat((padding_mask, padding_mask1), dim=0)
 
