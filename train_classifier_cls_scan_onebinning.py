@@ -94,6 +94,7 @@ def Accuracy(predictions,labels):
 
 def TestMetrics(predictions):
 
+    predictions=GetPredictions(model_dir)
 
     labels=predictions['labels']
     predictions=predictions['predictions']
@@ -159,7 +160,7 @@ lr_list=[.001]
 
 
 #test vars
-num_events_test=200000
+num_events_test=2000
 r_tresh=.3
 
 dict_auc={'suffix':[],'num_events':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
@@ -172,7 +173,7 @@ for sig in sig_list:
 
         for num_events in num_events_list:
 
-            tag_of_train='top_vs_qcd_jetclass_classifier_cls_test_pipeline_nevents'+str(num_events)
+            tag_of_train='top_vs_qcd_jetclass_classifier_cls_test_pipeline_2_nevents'+str(num_events)
             log_dir='//net/data_ttk/hreyes/JetClass/Classification_CLS/top_vs_qcd/'+tag_of_train
             for num_const in num_const_list:
                 for batch_size in batch_size_list:
