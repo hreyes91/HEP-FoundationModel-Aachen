@@ -87,7 +87,7 @@ class JetClassifierWithClassAttention(Module):
         ])
 
         # Output layers
-        self.out_norm = LayerNorm(hidden_dim)
+        self.out_norm = LayerNorm(2*hidden_dim)
         self.dropout = Dropout(dropout)
         self.out = Linear(hidden_dim, 1)  # Binary classification head
 
@@ -129,11 +129,20 @@ class JetClassifierWithClassAttention(Module):
         '''
         
       # === (5) Extract CLS Token & Compute Mean Pooling ===
+
         cls_embedding = emb[:, 0, :]  # CLS token embedding
         mean_pooling = emb[:, 1:, :].mean(dim=1)  # Mean over all jet constituents
 
+         
+        self.proj = nn.Linear(2*self.hidden_dim, self.hidden_dim)  # Projection to match expected size
+    
+        self.out = nn.Linear(self.hidden_dim, 1) 
         # === (6) Concatenate CLS & Mean Pooling ===
         jet_representation = torch.cat([cls_embedding, mean_pooling], dim=-1)
+        
+        device = jet_representation.device
+        self.proj = self.proj.to(device)
+        jet_representation = self.proj(jet_representation)
 
         # === (7) Final Classification ===
         jet_representation = self.out_norm(jet_representation)

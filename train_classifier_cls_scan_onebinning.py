@@ -121,7 +121,7 @@ def TestResults(dict_auc,model_dir,r_tresh):
     arguments_file=read_file(model_dir+'/arguments.txt')
     num_events_train=extract_value('num_events',arguments_file)
     print(num_events_train)
-    auc=readauc(mother_dir+model_dir)
+
 
 
     auc_score,r_val,acc=TestMetrics(predictions,r_tresh)
@@ -148,7 +148,7 @@ dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 num_cls_layers_list=[3]
-hidden_dim_list=[128]
+hidden_dim_list=[256]
 batch_size_list=[50]
 num_events_list=[1000,10000]
 num_const_list=[128]
@@ -172,7 +172,7 @@ for sig in sig_list:
 
         for num_events in num_events_list:
 
-            tag_of_train='top_vs_qcd_jetclass_classifier_cls_test_nevents'+str(num_events)
+            tag_of_train='top_vs_qcd_jetclass_classifier_cls_test_pipeline_nevents'+str(num_events)
             log_dir='//net/data_ttk/hreyes/JetClass/Classification_CLS/top_vs_qcd/'+tag_of_train
             for num_const in num_const_list:
                 for batch_size in batch_size_list:
@@ -208,7 +208,7 @@ for sig in sig_list:
 
 
 frame_auc=pd.DataFrame(dict_auc)
-frame_auc.to_csv(log_dir+.'txt',index=False)
+frame_auc.to_csv(log_dir+'.txt',index=False)
 
 
 elapsed_time = end_time - start_time
