@@ -222,7 +222,7 @@ def get_dataloader(
     print(f"Using bg {bg.shape} from {bgf} and sig {sig.shape} from {sigf}")
 
     dat = np.concatenate((bg, sig), 0)
-    mask = dar[:, :, 0] == -
+    mask = dat[:, :, 0] == -1
 
     _, _, jet_mass=make_continues(dat, mask, noise=False)
     
