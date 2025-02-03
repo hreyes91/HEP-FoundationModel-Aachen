@@ -128,7 +128,7 @@ def TestResults(dict_auc,model_dir,r_tresh):
     auc_score,r_val,acc=TestMetrics(predictions,r_tresh)
 
     dict_auc.get('num_events').append(num_events_train)
-    dict_auc.get('auc_score').append(auc_score)
+    dict_auc.get('auc').append(auc_score)
     dict_auc.get('r_'+str(r_tresh)).append(r_val)
     dict_auc.get('acc'+str(acc)).append(acc)
   
