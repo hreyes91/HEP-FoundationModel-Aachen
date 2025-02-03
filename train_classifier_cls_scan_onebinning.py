@@ -92,7 +92,7 @@ def Accuracy(predictions,labels):
     
     return acc
 
-def TestMetrics(predictions):
+def TestMetrics(predictions,r_tresh):
 
     
 
