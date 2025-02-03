@@ -160,7 +160,7 @@ if __name__ == '__main__':
             x = x.to(device)
             padding_mask = padding_mask.to(device)
             label = label.to(device)
-
+            jet_mass=jet_mass.to(device)
             #with torch.no_grad():
             #with torch.cuda.amp.autocast():
             logits = model(x, padding_mask,jet_mass)
