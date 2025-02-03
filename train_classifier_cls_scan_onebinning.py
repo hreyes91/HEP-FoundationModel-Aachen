@@ -99,7 +99,7 @@ def TestMetrics(predictions,r_tresh):
     labels=predictions['labels']
     predictions=predictions['predictions']
 
-    fpr, tpr, _ = roc_curve(predictions, predictions)
+    fpr, tpr, _ = roc_curve(predictions, labels)
     
     
     auc_score=roc_auc_score(labels, predictions)
