@@ -109,7 +109,7 @@ def TestMetrics(predictions,r_tresh):
     r_val=ComputeR(tpr,fpr,r_tresh)
     
     
-    acc=Accuracy(predictions)
+    acc=Accuracy(predictions,labels)
 
     return auc_score,r_val,acc
 
