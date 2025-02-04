@@ -308,7 +308,9 @@ class JetClassifierWithAttentionPoolingCombCLS(nn.Module):
         return logits
 
 
-
+    def loss(self, logits, true_bin):
+        true_bin = true_bin.float().view(-1)
+        return self.criterion(logits, true_bin)
 
 
 class JetClassifierWithClassAttentionAndFeatures(nn.Module):
