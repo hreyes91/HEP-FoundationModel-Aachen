@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from argparse import ArgumentParser
 import random
-from model import JetClassifierWithAttentionPoolingCombCLS,JetClassifierWithAttentionPoolingIgCLS(nn.Module)
+from model import JetClassifierWithAttentionPoolingCombCLS,JetClassifierWithAttentionPoolingIgCLS
 
 from tqdm import tqdm
 import pandas as pd
