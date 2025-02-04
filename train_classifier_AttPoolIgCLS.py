@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 from helpers_train import (
     get_cos_scheduler,
