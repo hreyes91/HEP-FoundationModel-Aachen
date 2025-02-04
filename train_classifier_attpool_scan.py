@@ -173,8 +173,8 @@ for sig in sig_list:
 
         for num_events in num_events_list:
 
-            tag_of_train='top_vs_qcd_jetclass_classifier_cls_test_pipeline_2_nevents'+str(num_events)
-            log_dir='//net/data_ttk/hreyes/JetClass/Classification_CLS/top_vs_qcd/'+tag_of_train
+            tag_of_train='top_vs_qcd_jetclass_classifier_attpool_test_pipeline_1_nevents'+str(num_events)
+            log_dir='//net/data_ttk/hreyes/JetClass/Classification_AttPool/top_vs_qcd/'+tag_of_train
             for num_const in num_const_list:
                 for batch_size in batch_size_list:
                     for num_epochs in num_epochs_list:
