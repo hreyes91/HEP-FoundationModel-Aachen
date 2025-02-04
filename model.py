@@ -133,6 +133,184 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
+
+
+class JetClassifierWithAttentionPoolingIgCLS(nn.Module):
+    def __init__(self, hidden_dim=256, num_layers=10, num_cls_layers=2, num_heads=4,
+                 num_features=3, num_bins=(41, 31, 31), dropout=0.0, num_const=128):
+        super().__init__()
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        self.num_features = num_features
+
+        # Feature embeddings
+        self.feature_embeddings = nn.ModuleList([
+            nn.Embedding(num_embeddings=num_bins[l], embedding_dim=hidden_dim) for l in range(num_features)
+        ])
+
+        # Backbone Transformer (Pretrained)
+        self.backbone_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim, nhead=num_heads,
+                dim_feedforward=hidden_dim * 4, batch_first=True,
+                norm_first=True, dropout=dropout
+            ) for _ in range(num_layers)
+        ])
+
+        # Class Attention
+        self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
+
+        self.cls_transformer_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim, nhead=num_heads,
+                dim_feedforward=hidden_dim * 4, batch_first=True,
+                norm_first=True, dropout=dropout
+            ) for _ in range(num_cls_layers)
+        ])
+
+        # Attention Pooling Layer
+        self.attn_fc = nn.Linear(hidden_dim, 1)  # Computes attention scores
+
+        # Output Layers
+        self.out_norm = nn.LayerNorm(hidden_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.out = nn.Linear(hidden_dim, 1)  # Binary classification head
+
+        # Loss function
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, x, padding_mask, jet_mass=None, targets=None):
+        batch_size, num_const, num_features = x.shape
+
+        # === (1) Embed Input Features ===
+        x[x < 0] = 0
+        emb = self.feature_embeddings[0](x[:, :, 0])
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](x[:, :, i])
+
+        # === (2) Pass Through Transformer Backbone ===
+        padding_mask = ~padding_mask
+        for layer in self.backbone_layers:
+            emb = layer(src=emb, src_key_padding_mask=padding_mask)
+
+        # === (3) Inject CLS Token ===
+        cls_token = self.cls_token.expand(batch_size, -1, -1).to(x.device)
+        emb = torch.cat([cls_token, emb], dim=1)
+
+        # === (4) Process CLS Token Through Transformer ===
+        for layer in self.cls_transformer_layers:
+            emb = layer(emb)
+
+        # === (5) Attention Pooling ===
+        attn_weights = torch.softmax(self.attn_fc(emb[:, 1:, :]), dim=1)  # Ignore CLS token
+        jet_representation = torch.sum(attn_weights * emb[:, 1:, :], dim=1)  # Weighted sum
+
+        # === (6) Final Classification ===
+        jet_representation = self.out_norm(jet_representation)
+        jet_representation = self.dropout(jet_representation)
+        logits = self.out(jet_representation).squeeze(-1)
+
+        return logits
+
+    def loss(self, logits, true_bin):
+        true_bin = true_bin.float().view(-1)
+        return self.criterion(logits, true_bin)
+
+
+
+
+
+class JetClassifierWithAttentionPoolingCombCLS(nn.Module):
+    def __init__(self, hidden_dim=256, num_layers=10, num_cls_layers=2,
+                 num_heads=4, num_features=3, num_bins=(41, 31, 31),
+                 dropout=0.0, num_const=128):
+        super().__init__()
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        self.num_features = num_features
+
+        # Feature embeddings
+        self.feature_embeddings = nn.ModuleList([
+            nn.Embedding(num_embeddings=num_bins[l], embedding_dim=hidden_dim) for l in range(num_features)
+        ])
+
+        # === Backbone Transformer ===
+        self.backbone_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim, nhead=num_heads,
+                dim_feedforward=hidden_dim * 4, batch_first=True,
+                norm_first=True, dropout=dropout
+            ) for _ in range(num_layers)
+        ])
+
+        # === CLS Token and Class Attention ===
+        self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
+        self.cls_transformer_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim, nhead=num_heads,
+                dim_feedforward=hidden_dim * 4, batch_first=True,
+                norm_first=True, dropout=dropout
+            ) for _ in range(num_cls_layers)
+        ])
+
+        # === Attention Pooling Layer ===
+        self.attn_mlp = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1)  # Attention score for each constituent
+        )
+
+        # === Output Layers ===
+        self.out_norm = nn.LayerNorm(hidden_dim * 2)  # Adjust for CLS + Attention
+        self.dropout = nn.Dropout(dropout)
+        self.out = nn.Linear(hidden_dim * 2, 1)
+
+        # Loss function
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, x, padding_mask, jet_mass=None, targets=None):
+        batch_size, num_const, num_features = x.shape
+
+        # === (1) Embed Input Features ===
+        x[x < 0] = 0
+        emb = self.feature_embeddings[0](x[:, :, 0])
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](x[:, :, i])
+
+        # === (2) Pass Through Backbone ===
+        padding_mask = ~padding_mask
+        for layer in self.backbone_layers:
+            emb = layer(src=emb, src_key_padding_mask=padding_mask)
+
+        # === (3) Inject CLS Token ===
+        cls_token = self.cls_token.expand(batch_size, -1, -1).to(x.device)
+        emb = torch.cat([cls_token, emb], dim=1)
+
+        # === (4) Process CLS Token Through Transformer ===
+        for layer in self.cls_transformer_layers:
+            emb = layer(emb)
+
+        # === (5) Attention Pooling ===
+        attn_scores = self.attn_mlp(emb[:, 1:, :])  # Exclude CLS token
+        attn_weights = torch.softmax(attn_scores, dim=1)  # Shape: (batch, n_const, 1)
+        attn_pooling = (attn_weights * emb[:, 1:, :]).sum(dim=1)  # Weighted sum
+
+        # === (6) Combine CLS + Attention Pooling ===
+        cls_embedding = emb[:, 0, :]
+        jet_representation = torch.cat([cls_embedding, attn_pooling], dim=-1)
+
+        # === (7) Final Classification ===
+        jet_representation = self.out_norm(jet_representation)
+        jet_representation = self.dropout(jet_representation)
+        logits = self.out(jet_representation).squeeze(-1)
+
+        return logits
+
+
+
+
+
 class JetClassifierWithClassAttentionAndFeatures(nn.Module):
     def __init__(self, hidden_dim=256, num_layers=10, num_cls_layers=2, num_heads=4,
                  num_features=3, num_bins=(41, 31, 31), dropout=0.0, num_const=128):
