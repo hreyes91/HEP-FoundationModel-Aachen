@@ -3,7 +3,8 @@ from argparse import ArgumentParser
 from helpers_train import set_seeds, load_data
 import numpy as np
 from tqdm import tqdm
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+import matplotlib.pyplot as plt
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 def get_args():
     parser = ArgumentParser()
@@ -85,7 +86,6 @@ def main():
     results = get_probs(model=model, loader=loader)
     dir = os.path.dirname(args.model)
     np.savez(os.path.join(dir, f"results_{args.tag}.npz"), **results)
-
 
 if __name__ == "__main__":
     main()

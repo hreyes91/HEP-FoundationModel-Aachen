@@ -1,5 +1,6 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn as nn
 import numpy as np
 
 from model import JetTransformer
@@ -9,7 +10,7 @@ from helpers_train import *
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 if __name__ == "__main__":
     args = parse_input()
     save_arguments(args)
@@ -58,7 +59,7 @@ if __name__ == "__main__":
 
     # construct model
     if args.contin:
-        model = load_model(log_dir=args.model_path)
+        model = load_model(model_path=args.model_path)
         print("Loaded model")
     else:
         model = JetTransformer(
@@ -72,6 +73,14 @@ if __name__ == "__main__":
             tanh=args.tanh,
             end_token=args.end_token,
         )
+    model_opt=torch.compile(model)
+    #model=model_opt
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)  #,device_ids=[0,3]
+    else:
+        print('using one gpu')
+
     model.to(device)
 
     # construct optimizer and auto-caster

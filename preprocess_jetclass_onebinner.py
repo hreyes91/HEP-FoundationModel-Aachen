@@ -251,9 +251,9 @@ def discretize_data(
 
         
         print('preprocessing bins should exist')
-        pt_bins = np.load(f"preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
-        eta_bins = np.load(f"preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
-        phi_bins = np.load(f"preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
+        pt_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
+        eta_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
+        phi_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
         print(f"\nLoaded bins with tag {tag}\n")
         return pt_bins, eta_bins, phi_bins
 
@@ -301,7 +301,7 @@ def discretize_data(
 
     # Write dataframes into compressed hdf5 file
     raw.to_hdf(output_file, key="raw", mode="w", complevel=9)
-    disc.to_hdf(output_file, key="discretized", mode="r+", complevel=9)
+    disc.to_hdf(output_file, key="discretized", mode="a", complevel=9)
 
     print("\nDiscretized dataframe description")
     print(disc.describe())
@@ -322,7 +322,7 @@ if __name__ == "__main__":
 
     train_test = args.input_file.split("/")[-1][:-3]
     print(f"Dataset: {train_test}")
-    output_path = os.path.join(os.path.dirname(args.input_file), "../discretized")
+    output_path = '/net/data_ttk/koller/JetClass/discretized'
     if not os.path.exists(output_path):
         print("\nCreating output path\n")
         os.makedirs(output_path)
