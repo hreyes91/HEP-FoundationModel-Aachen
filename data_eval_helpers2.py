@@ -48,8 +48,8 @@ def make_continues(jets, mask,pt_bins,eta_bins,phi_bins, noise=False):
     
     ptj = np.sqrt(pxj**2 + pyj**2)
     mj = (ej ** 2 - pxj ** 2 - pyj ** 2 - pzj ** 2) ** (1. / 2)
-    print('mj :',np.min(mj),np.max(mj))
-    print('mj :',np.nanmin(mj),np.nanmax(mj))
+    #print('mj :',np.min(mj),np.max(mj))
+    #print('mj :',np.nanmin(mj),np.nanmax(mj))
     
     continues_jets = np.stack((pt_con, eta_con, phi_con), -1)
 
@@ -59,12 +59,16 @@ def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,ptj_true,mj_true,path
     
     pt_true=(jets_true[:,:,0]).flatten()
     pt_samp=(jets[:,:,0]).flatten()
+    pt_true_zero=pt_true!=0
+    pt_samp_zero=pt_samp!=0
+    pt_true=pt_true[pt_true_zero]
+    pt_samp=pt_samp[pt_samp_zero]
     
-    eta_true=jets_true[:,:,1].flatten()
-    eta_samp=jets[:,:,1].flatten()
+    eta_true=jets_true[:,:,1].flatten()[pt_true_zero]
+    eta_samp=jets[:,:,1].flatten()[pt_samp_zero]
     
-    phi_true=jets_true[:,:,2].flatten()
-    phi_samp=jets[:,:,2].flatten()
+    phi_true=jets_true[:,:,2].flatten()[pt_true_zero]
+    phi_samp=jets[:,:,2].flatten()[pt_samp_zero]
     
     mul_true=np.sum(jets_true[:, :, 0] != 0, axis=1)
     mul_samp=np.sum(jets[:, :, 0] != 0, axis=1)
@@ -78,8 +82,8 @@ def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,ptj_true,mj_true,path
     mj_bins = np.linspace(0, 700, 200)
     #mj_true=np.clip(mj_true, mj_bins[0], mj_bins[-1])
     #mj_samp=np.clip(mj, mj_bins[0], mj_bins[-1])
-    mj_samp=np.ma.masked_invalid(mj)
-    mj_true=np.ma.masked_invalid(mj_true)
+    mj_true=(mj_true[~np.isnan(mj_true)])
+    mj_samp=(mj[~np.isnan(mj)])
     
     #qqplots
     qq_plot(pt_true,pt_samp,'pt',path_to_plots,pt_bins,'step')
@@ -176,7 +180,7 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
     ax1.grid()
     #plt.text(xtext,ytext,plot_text,dict(size=10))
     fig.suptitle(data_name)
-    plt.savefig(path_to_plots+'/hist_qqplot_'+data_name+'.png')
+    plt.savefig(path_to_plots+'/hist_qqplot_'+data_name+'_new.png')
     plt.close()
 
 
