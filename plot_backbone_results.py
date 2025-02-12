@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import data_eval_helpers2 as deh
 
 #class
-data='WToQQ'
+data='TTBar'
 n_events='_10M_events'
 n_epochs='_30_epochs'
 n_samples='_200k_samples'
@@ -25,10 +25,6 @@ n_samples_true=200000
 #get true and sampled data
 jets,ptj,mj=deh.LoadSGenamples(filename_samples,pt_bins,eta_bins,phi_bins,n_samples_samples)
 jets_true,ptj_true,mj_true=deh.LoadTrue(filename_disc_truedata,n_samples_true,pt_bins,eta_bins,phi_bins)
-#plot distributions for pt, mj, eta phi
+#plot distributions for pt, mj, eta, phi, mul
 mul_samp,mul_true,pt_samp,pt_true=deh.Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,ptj_true,mj_true,path_to_plots,n_events,n_epochs,n_samples,data)
 
-#wd, ks
-#w_distance,ks=deh.test_metrics(mj_true,mj)
-#print('wassersteindistance: ',w_distance)
-#print(ks)
