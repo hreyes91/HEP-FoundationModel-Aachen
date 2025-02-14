@@ -1,0 +1,13 @@
+# sleep.sub -- simple sleep job 2executable bash_run.sh
+log = = sleep.log
+output = sleep.out
+error = sleep.err
+
+request_cpus
+#request_GPUMemory=1000
+request_GPUs=1
+initialdir=/home/home3/institut_thp/hreyes/Transformers/FoundationModels/HEP-FoundationModel-Aachen
+
+#requirements = (Machine == "lx3bgpu1.physik.rwth-aachen.de")
+
+queue
