@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import os
 from tqdm import tqdm
-
+import h5py
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -160,9 +160,14 @@ def discretize_data(
 ):
     def read_input():
     
-        f=h5py.File(file_path, 'r')
-        data1=f.get('jet_1_feat')[:,:,0:3]
-        data2=f.get('jet_2_feat')[:,:,0:3]
+        f=h5py.File(input_file, 'r')
+       
+        
+        #data1=f.get('jet_1_feat')[:,:,0:3]
+        data1=f.get('jet_1_feat').astype(np.float64)[:,:,0:3]
+     
+        
+        data2=f.get('jet_2_feat').astype(np.float64)[:,:,0:3]
         
         
         
@@ -243,9 +248,16 @@ def discretize_data(
 
         
         print('preprocessing bins should exist')
-        pt_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
-        eta_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
-        phi_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
+        #pt_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
+        #eta_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
+        #phi_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
+        
+        pt_bins = np.load(f"//Users/humbertosmac/Dropbox/Transformers/OptimalClassifier/Data/SameBin/OptimalClassifierSamplesSameBinGen/TrueJetClass/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
+        eta_bins = np.load(f"/Users/humbertosmac/Dropbox/Transformers/OptimalClassifier/Data/SameBin/OptimalClassifierSamplesSameBinGen/TrueJetClass/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
+        phi_bins = np.load(f"/Users/humbertosmac/Dropbox/Transformers/OptimalClassifier/Data/SameBin/OptimalClassifierSamplesSameBinGen/TrueJetClass/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
+        
+        
+        
         print(f"\nLoaded bins with tag {tag}\n")
         return pt_bins, eta_bins, phi_bins
 
@@ -263,10 +275,10 @@ def discretize_data(
 
     def get_df(pt, eta, phi):
         stacked = np.stack([pt, eta, phi], -1)
-        stacked = stacked.reshape((-1, 600))
+        stacked = stacked.reshape((-1, 300))
         cols = [
             item
-            for sublist in [f"PT_{i},Eta_{i},Phi_{i}".split(",") for i in range(200)]
+            for sublist in [f"PT_{i},Eta_{i},Phi_{i}".split(",") for i in range(100)]
             for item in sublist
         ]
         df = pd.DataFrame(stacked, columns=cols)
@@ -275,11 +287,12 @@ def discretize_data(
     print(f"Input: {input_file}\nOutput: {output_file}")
 
     data = read_input()
+    #data=[data1,data2]
     disc_list=[]
-    for jet in data():
-        print(f"Data shape: {data.shape}\n")
+    for jet in data:
+        print(f"Data shape: {jet.shape}\n")
         #const_pt, d_eta, d_phi = calculate_features(data)
-        const_pt, d_eta, d_phi = Get_features(data)
+        const_pt, d_eta, d_phi = Get_features(jet)
         check_pt_oredering(const_pt)
 
         pt_bins, eta_bins, phi_bins = get_binning()
@@ -296,8 +309,13 @@ def discretize_data(
         # Write dataframes into compressed hdf5 file
     
     #raw.to_hdf(output_file, key="raw", mode="w", complevel=9)
+    k=0
     for disc in disc_list:
-        disc.to_hdf(output_file, key="discretized", mode="r+", complevel=9)
+        if k==0:
+            disc.to_hdf(output_file, key="discretized_jet"+str(k), mode="w", complevel=9)
+        else:
+            disc.to_hdf(output_file, key="discretized_jet"+str(k), mode="w", complevel=9)
+        ++k
 
     print("\nDiscretized dataframe description")
     print(disc.describe())

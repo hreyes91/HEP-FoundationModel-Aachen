@@ -116,78 +116,29 @@ def parse_input():
     args = parser.parse_args()
     return args
 
-
 def load_data(file):
-    if file.endswith("npz"):
-        dat = np.load(file)["jets"][: args.num_events, : args.num_const]
-    elif file.endswith("h5"):
-        dat = pd.read_hdf(file, key="discretized", stop=args.num_events)
-        dat = dat.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
-        dat = dat.reshape(dat.shape[0], -1, 3)
-    else:
-        assert False, "Filetype for bg not supported"
-    dat = np.delete(dat, np.where(dat[:, 0, 0] == 0)[0], axis=0)
-    dat[dat == -1] = 0
+
+    jet1 = pd.read_hdf(file, key="discretized_jet1", stop=args.num_events)
+    jet1 = jet1.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+    jet1 = jet1.reshape(jet1.shape[0], -1, 3)
+
+    jet1 = np.delete(jet1, np.where(jet1[:, 0, 0] == 0)[0], axis=0)
+    jet1[jet1 == -1] = 0
     
-    file_val=file.replace("_train_","_val_")
-    
-    if file.endswith("npz"):
-        dat_val = np.load(file_val)["jets"][: args.num_events_val, : args.num_const]
-    elif file_val.endswith("h5"):
-        dat_val = pd.read_hdf(file_val, key="discretized", stop=args.num_events_val)
-        dat_val = dat_val.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
-        dat_val = dat_val.reshape(dat_val.shape[0], -1, 3)
-    else:
-        assert False, "Filetype for bg not supported"
-    dat_val = np.delete(dat_val, np.where(dat_val[:, 0, 0] == 0)[0], axis=0)
-    dat_val[dat_val == -1] = 0
+    jet2 = pd.read_hdf(file, key="discretized_jet2", stop=args.num_events)
+    jet2 = jet2.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+    jet2 = jet2.reshape(jet2.shape[0], -1, 3)
+
+    jet2 = np.delete(jet2, np.where(jet2[:, 0, 0] == 0)[0], axis=0)
+    jet2[jet2 == -1] = 0
     
 
     
-    return dat,dat_val
+    return jet1,jet2
 
 
 
-class JetDataset(Dataset):
-    def __init__(self, jet1_data, jet2_data, padding_mask1, padding_mask2, labels):
-        """
-        Initialize the dataset.
-        
-        Args:
-            jet1_data (numpy.ndarray or torch.Tensor): Jet 1 data of shape (N, num_constituents, num_features)
-            jet2_data (numpy.ndarray or torch.Tensor): Jet 2 data of shape (N, num_constituents, num_features)
-            padding_mask1 (numpy.ndarray or torch.Tensor): Padding mask for Jet 1, shape (N, num_constituents)
-            padding_mask2 (numpy.ndarray or torch.Tensor): Padding mask for Jet 2, shape (N, num_constituents)
-            labels (numpy.ndarray or torch.Tensor): Labels for binary classification, shape (N,)
-        """
-        self.jet1_data = jet1_data
-        self.jet2_data = jet2_data
-        self.padding_mask1 = padding_mask1
-        self.padding_mask2 = padding_mask2
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        """
-        Get a single sample from the dataset.
-        
-        Args:
-            idx (int): Index of the sample to retrieve.
-            
-        Returns:
-            tuple: (jet1_data, jet2_data, padding_mask1, padding_mask2, label)
-        """
-        jet1 = torch.tensor(self.jet1_data[idx], dtype=torch.float32)
-        jet2 = torch.tensor(self.jet2_data[idx], dtype=torch.float32)
-        padding_mask1 = torch.tensor(self.padding_mask1[idx], dtype=torch.bool)
-        padding_mask2 = torch.tensor(self.padding_mask2[idx], dtype=torch.bool)
-        label = torch.tensor(self.labels[idx], dtype=torch.float32)  # For BCEWithLogitsLoss, labels should be float32
-        
-        return jet1, jet2, padding_mask1, padding_mask2, label
-
-def get_dataloader(jet1_data, jet2_data, padding_mask1, padding_mask2, labels, batch_size=32, shuffle=True, num_workers=4):
+def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     """
     Creates a DataLoader for training or validation.
     
@@ -204,109 +155,72 @@ def get_dataloader(jet1_data, jet2_data, padding_mask1, padding_mask2, labels, b
     Returns:
         DataLoader: The DataLoader object for training or validation.
     """
-    # Create the dataset
-    dataset = JetDataset(jet1_data, jet2_data, padding_mask1, padding_mask2, labels)
+    
+    
+    bg_jet1,bg_jet2 = load_data(bgf)
+    sig_jet1,sig_jet2 = load_data(sigf)
+
+    print(f"Using bg {bg.shape} from {bgf} and sig {sig.shape} from {sigf}")
+
+    jet1_data = np.concatenate((bg_jet1, sig_jet1), 0)
+    jet2_data = np.concatenate((bg_jet2, sig_jet2), 0)
+    
+    
+    label = np.append(np.zeros(len(bg_jet1)), np.ones(len(sig_jet1)))
+    
+    padding_mask1 = jet1_data[:, :, 0] != 0
+    padding_mask2 = jet2_data[:, :, 0] != 0
+
+
+
+
+
+    idx = np.random.permutation(len(label))
+    
+    jet1 = torch.tensor(jet1_data[idx], dtype=torch.float32)
+    jet2 = torch.tensor(jet2_data[idx], dtype=torch.float32)
+    padding_mask1 = torch.tensor(padding_mask1[idx], dtype=torch.bool)
+    padding_mask2 = torch.tensor(padding_mask2[idx], dtype=torch.bool)
+    label = torch.tensor(labels[idx], dtype=torch.float32)  # For BCEWithLogitsLoss, labels should be float32
+    
+    
+    train_set = TensorDataset(
+        jet1[: int(0.9 * len(dat))],
+        padding_mask1[: int(0.9 * len(dat))],
+        jet2[: int(0.9 * len(dat))],
+        padding_mask2[: int(0.9 * len(dat))],
+        
+        
+        label[: int(0.9 * len(dat))],
+    )
+    
+    
+    val_set = TensorDataset(
+        jet1[int(0.9 * len(dat)) :],
+        padding_mask1[int(0.9 * len(dat)) :],
+        jet2[int(0.9 * len(dat)) :],
+        padding_mask2[int(0.9 * len(dat)) :],
+        
+        
+        label[int(0.9 * len(dat)) :],
+    )
+    train_loader = DataLoader(
+        train_set,
+        batch_size=args.batch_size,
+        shuffle=True,
+    )
+    val_loader = DataLoader(
+        val_set,
+        batch_size=args.batch_size,
     
     # Create the DataLoader
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    #dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     
-    return dataloader
+    return train_loader,val_loader
 
 
-def get_dataloader(
-    bgf,
-    sigf,
-):
-    bg = load_data(bgf)
-    sig = load_data(sigf)
 
-    print(f"Using bg {bg.shape} from {bgf} and sig {sig.shape} from {sigf}")
-
-    dat = np.concatenate((bg, sig), 0)
-    lab = np.append(np.zeros(len(bg)), np.ones(len(sig)))
-    padding_mask = dat[:, :, 0] != 0
-
-    idx = np.random.permutation(len(dat))
-    dat = torch.tensor(dat[idx])
-    lab = torch.tensor(lab[idx])
-    padding_mask = torch.tensor(padding_mask[idx])
-
-    train_set = TensorDataset(
-        dat[: int(0.9 * len(dat))],
-        padding_mask[: int(0.9 * len(dat))],
-        lab[: int(0.9 * len(dat))],
-    )
-    val_set = TensorDataset(
-        dat[int(0.9 * len(dat)) :],
-        padding_mask[int(0.9 * len(dat)) :],
-        lab[int(0.9 * len(dat)) :],
-    )
-    train_loader = DataLoader(
-        train_set,
-        batch_size=args.batch_size,
-        shuffle=True,
-    )
-    val_loader = DataLoader(
-        val_set,
-        batch_size=args.batch_size,
-    )
-    return train_loader, val_loader
-
-def get_dataloader(
-    bgf,
-    sigf,
-):
-    bg,bg_val = load_data(bgf)
-    sig,sig_val = load_data(sigf)
-
-    print(f"Using bg {bg.shape} from {bgf} and sig {sig.shape} from {sigf}")
-
-    dat = np.concatenate((bg, sig), 0)
-    lab = np.append(np.zeros(len(bg)), np.ones(len(sig)))
-    padding_mask = dat[:, :, 0] != 0
-
-    idx = np.random.permutation(len(dat))
-    dat = torch.tensor(dat[idx])
-    lab = torch.tensor(lab[idx])
-    padding_mask = torch.tensor(padding_mask[idx])
-
-
-    dat_val = np.concatenate((bg_val, sig_val), 0)
-    lab_val = np.append(np.zeros(len(bg_val)), np.ones(len(sig_val)))
-    padding_mask_val = dat_val[:, :, 0] != 0
-
-    idx_val = np.random.permutation(len(dat_val))
-    dat_val = torch.tensor(dat_val[idx_val])
-    lab_val = torch.tensor(lab_val[idx_val])
-    padding_mask_val = torch.tensor(padding_mask_val[idx_val])
-
-    
-
-    train_set = TensorDataset(
-        dat[: int(1 * len(dat))],
-        padding_mask[: int(1 * len(dat))],
-        lab[: int(1 * len(dat))],
-    )
-    val_set = TensorDataset(
-        dat_val[int(0 * len(dat_val)) :],
-        padding_mask_val[int(0 * len(dat_val)) :],
-        lab_val[int(0 * len(dat_val)) :],
-    )
-
-
-    
-
-    train_loader = DataLoader(
-        train_set,
-        batch_size=args.batch_size,
-        shuffle=True,
-    )
-    val_loader = DataLoader(
-        val_set,
-        batch_size=args.batch_size,
-    )
-    return train_loader, val_loader
-    
+ 
 def plot_rocs(model, val_loader, tag):
     labels = []
     preds = []
@@ -497,13 +411,37 @@ if __name__ == "__main__":
         
         )
     model.to(device)
+    
+    
+    # Freeze the backbone (original_model)
+    # Freeze feature embeddings
+    for param in model.feature_embeddings.parameters():
+        param.requires_grad = False
+
+    # Freeze transformer layers
+    for param in model.layers.parameters():
+        param.requires_grad = False
+
+    # Freeze normalization and dropout layers
+    for param in model.out_norm.parameters():
+        param.requires_grad = False
+
+    for param in model.dropout_layer.parameters():
+        param.requires_grad = False
+
+
     path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
 
     filtered_opt_state_dict=orig_load_opt_dict(args.model_path_in,path_to_sate_dict)
     # construct optimizer and auto-caster
-    opt = torch.optim.Adam(
-        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
-    )
+    #opt = torch.optim.Adam(
+    #    model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    #)
+    
+    
+    #freezed backbone
+    opt = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+
     #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
     print('model paramaters')
     print(model.parameters())
@@ -537,16 +475,20 @@ if __name__ == "__main__":
     for epoch in range(args.num_epochs):
         model.train()
         loss_list_here=[]
-        for x, padding_mask, label in tqdm(
+        for jet1, jet2, padding_mask1, padding_mask2, label in tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}"
         ):
             opt.zero_grad()
-            x = x.to(device)
-            padding_mask = padding_mask.to(device)
+            jet1 = jet1.to(device)
+            padding_mask1 = padding_mask1.to(device)
+            
+            jet2 = jet2.to(device)
+            padding_mask2 = padding_mask2.to(device)
+            
             label = label.to(device)
 
             with torch.cuda.amp.autocast():
-                logits = model(x, padding_mask)
+                logits = model(jet1, jet2, padding_mask1, padding_mask2)
                 loss = model.loss(logits, label.view(-1, 1))
 
             scaler.scale(loss).backward()
@@ -570,16 +512,20 @@ if __name__ == "__main__":
         with torch.no_grad():
             val_loss = []
             val_perplexity = []
-            for x, padding_mask, label in tqdm(
+            for jet1, jet2, padding_mask1, padding_mask2, label in tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}"
             ):
-                x = x.to(device)
-                padding_mask = padding_mask.to(device)
+                jet1 = jet1.to(device)
+                padding_mask1 = padding_mask1.to(device)
+            
+                jet2 = jet2.to(device)
+                padding_mask2 = padding_mask2.to(device)
+            
+            
                 label = label.to(device)
 
                 logits = model(
-                    x,
-                    padding_mask,
+                                 jet1, jet2, padding_mask1, padding_mask2
                 )
                 loss = model.loss(logits, label.view(-1, 1))
                 val_loss.append(loss.cpu().detach().numpy())

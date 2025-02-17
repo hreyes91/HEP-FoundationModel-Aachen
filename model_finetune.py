@@ -179,6 +179,99 @@ class JetTransformerClassifierFine(Module):
         loss = self.criterion(logits, true_bin)
         return loss
 
+
+class JetClassifierWithClassAttentionAndFeaturesFine(nn.Module):
+
+    def __init__(self,original_model, hidden_dim=256, num_layers=10, num_cls_layers=2, num_heads=4,
+                 num_features=3, num_bins=(41, 31, 31), dropout=0.0, num_const=128):
+        super(JetTransformerClassifierFine, self).__init__()
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        self.num_features = num_features
+
+        # learn embedding for each bin of each feature dim
+        #######################################################################################
+        self.feature_embeddings =original_model.feature_embeddings
+        
+
+        # === Backbone Transformer (Pretrained) ===
+        # build transformer layers
+        self.layers =original_model.layers
+
+        self.out_norm = original_model.out_norm
+        self.dropout = original_model.dropout
+
+        # === Class Attention ===
+        self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))  # Learnable CLS token
+        self.cls_transformer_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim, nhead=num_heads,
+                dim_feedforward=hidden_dim * 4, batch_first=True,
+                norm_first=True, dropout=dropout
+            ) for _ in range(num_cls_layers)
+        ])
+
+        # === Jet Mass Normalization ===
+        self.mass_norm = nn.LayerNorm(1)  # Normalize jet mass
+
+        # === Output Layers ===
+        self.out_norm = nn.LayerNorm(hidden_dim * 2 + 1)  # Adjusted for jet mass
+        self.dropout = nn.Dropout(dropout)
+        self.out = nn.Linear(hidden_dim * 2 + 1, 1)  # Adjusted output size
+
+        # Loss function
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, x, padding_mask, jet_mass, targets=None):
+        batch_size, num_const, num_features = x.shape  # (batch, n_const, n_features)
+
+        # === (1) Embed Input Features ===
+        x[x < 0] = 0  # Handle negative values
+        emb = self.feature_embeddings[0](x[:, :, 0])  # First feature
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](x[:, :, i])  # Sum embeddings
+
+        # === (2) Pass Through Transformer Backbone ===
+        seq_len = num_const
+        seq_idx = torch.arange(seq_len, dtype=torch.long, device=x.device)
+        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)  # Causal mask
+        padding_mask = ~padding_mask  # Invert mask for TransformerEncoderLayer
+
+        for layer in self.backbone_layers:
+            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+
+        # === (3) Inject CLS Token ===
+        cls_token = self.cls_token.expand(batch_size, -1, -1)
+        emb = torch.cat([cls_token, emb], dim=1)
+
+        # === (4) Process CLS Token Through Transformer ===
+        for layer in self.cls_transformer_layers:
+            emb = layer(emb)
+
+        # === (5) Extract CLS Token & Compute Mean Pooling ===
+        cls_embedding = emb[:, 0, :]  # CLS token embedding
+        mean_pooling = emb[:, 1:, :].mean(dim=1)  # Mean over jet constituents
+
+        # === (6) Normalize and Concatenate Jet Mass ===
+        jet_mass = jet_mass.unsqueeze(-1)  # Ensure shape (batch, 1)
+        jet_mass = self.mass_norm(jet_mass)  # Normalize jet mass
+        jet_representation = torch.cat([cls_embedding, mean_pooling, jet_mass], dim=-1)  # Combine all features
+
+        # === (7) Final Classification ===
+        jet_representation = self.out_norm(jet_representation)
+        jet_representation = self.dropout(jet_representation)
+        logits = self.out(jet_representation).squeeze(-1)  # Output shape: (batch,)
+
+        return logits
+        
+        
+    def loss(self, logits, true_bin):
+        true_bin = true_bin.float().view(-1)  # Fix: Ensure shape is (batch,)
+        return self.criterion(logits, true_bin)
+
+
+
+
 class JetTransformer(Module):
     def __init__(
         self,
