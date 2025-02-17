@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time, os
 from argparse import ArgumentParser
 from helpers_train import set_seeds
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 

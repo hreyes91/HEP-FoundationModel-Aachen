@@ -4,7 +4,7 @@ from helpers_train import set_seeds, load_data
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 def get_args():
     parser = ArgumentParser()
