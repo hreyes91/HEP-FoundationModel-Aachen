@@ -44,7 +44,7 @@ def parse_input():
         help="Path to signal data file",
     )
     parser.add_argument(
-        "--seed", type=int, default=0, help="the random seed for torch and numpy"
+        "--seed", type=int, default=None, help="the random seed for torch and numpy"
     )
     parser.add_argument(
         "--logging_steps", type=int, default=10, help="Training steps between logging"
@@ -61,21 +61,21 @@ def parse_input():
         default="model_best.pt",
         help="Pretrained model choice",
     )
-    parser.add_argument(
-        "--num_events_val", type=int, default=10000, help="Number of val events for training"
-    )
+   # parser.add_argument(
+   #     "--num_events_val", type=int, default=10000, help="Number of val events for training"
+   # )
     parser.add_argument("--num_workers", type=int, default=4, help="Number of workers")
 
     parser.add_argument(
         "--num_const", type=int, default=100, help="Number of constituents"
     )
-    parser.add_argument(
-        "--num_events", type=int, default=10000, help="Number of events for training"
-    )
-    
     #parser.add_argument(
-    #    "--num_const", type=int, default=100, help="Max Number of constituents"
+    #    "--num_events", type=int, default=None, help="Number of events for training"
     #)
+    
+    parser.add_argument(
+        "--num_const", type=int, default=100, help="Max Number of constituents"
+    )
     
     parser.add_argument(
         "--num_bins",
@@ -118,14 +118,14 @@ def parse_input():
 
 def load_data(file):
 
-    jet1 = pd.read_hdf(file, key="discretized_jet1", stop=args.num_events)
+    jet1 = pd.read_hdf(file, key="discretized_jet1")
     jet1 = jet1.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
     jet1 = jet1.reshape(jet1.shape[0], -1, 3)
 
     jet1 = np.delete(jet1, np.where(jet1[:, 0, 0] == 0)[0], axis=0)
     jet1[jet1 == -1] = 0
     
-    jet2 = pd.read_hdf(file, key="discretized_jet2", stop=args.num_events)
+    jet2 = pd.read_hdf(file, key="discretized_jet2")
     jet2 = jet2.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
     jet2 = jet2.reshape(jet2.shape[0], -1, 3)
 
@@ -185,24 +185,24 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     
     
     train_set = TensorDataset(
-        jet1[: int(0.9 * len(dat))],
-        padding_mask1[: int(0.9 * len(dat))],
-        jet2[: int(0.9 * len(dat))],
-        padding_mask2[: int(0.9 * len(dat))],
+        jet1[: int(0.8 * len(dat))],
+        padding_mask1[: int(0.8 * len(dat))],
+        jet2[: int(0.8 * len(dat))],
+        padding_mask2[: int(0.8 * len(dat))],
         
         
-        label[: int(0.9 * len(dat))],
+        label[: int(0.8 * len(dat))],
     )
     
     
     val_set = TensorDataset(
-        jet1[int(0.9 * len(dat)) :],
-        padding_mask1[int(0.9 * len(dat)) :],
-        jet2[int(0.9 * len(dat)) :],
-        padding_mask2[int(0.9 * len(dat)) :],
+        jet1[int(0.8 * len(dat)) :],
+        padding_mask1[int(0.8 * len(dat)) :],
+        jet2[int(0.8 * len(dat)) :],
+        padding_mask2[int(0.8 * len(dat)) :],
         
         
-        label[int(0.9 * len(dat)) :],
+        label[int(0.8 * len(dat)) :],
     )
     train_loader = DataLoader(
         train_set,
