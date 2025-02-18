@@ -50,7 +50,7 @@ class JetTransformerAL(Module):
         self,
         original_model,
         hidden_dim=256,
-        num_layers=10,
+        num_layers=8,
         num_heads=4,
         num_features=3,
         num_bins=(41, 31, 31),

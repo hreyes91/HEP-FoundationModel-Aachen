@@ -403,12 +403,12 @@ if __name__ == "__main__":
     model = JetTransformerAL(original_model,
         hidden_dim=args.hidden_dim,
 
-        num_layers=10,
-        num_heads=4,
+        num_layers=args.num_layers,
+        num_heads=args.num_heads,
         num_features=3,
         num_bins=(41, 31, 31),
-        dropout=0.1,
-        num_const=100
+        dropout=args.dropout,
+        num_const=args.num_const
         
         )
     model.to(device)
