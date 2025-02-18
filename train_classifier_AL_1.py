@@ -441,7 +441,7 @@ if __name__ == "__main__":
     
     
     #freezed backbone
-    opt = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay
+    opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay
     )
 
     #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
