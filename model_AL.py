@@ -73,7 +73,8 @@ class JetTransformerAL(Module):
         # Classification head with MLP and Average Pooling
         self.mlp1 = nn.Linear(hidden_dim * 2, 100)  # Jet 1 and Jet 2 concatenated
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Average pooling across jet constituents
-        self.mlp2 = nn.Linear(100, 100)  # MLP after pooling
+        #self.mlp2 = nn.Linear(100,100)  # MLP after pooling
+        self.mlp2 = nn.Linear(100,1)
         self.output = nn.Linear(100, 1)  # Final binary classification output
         
         # Criterion for binary classification
