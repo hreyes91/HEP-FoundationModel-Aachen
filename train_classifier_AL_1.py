@@ -402,8 +402,7 @@ if __name__ == "__main__":
     # construct model
     model = JetTransformerAL(original_model,
         hidden_dim=args.hidden_dim,
-        original_model,
-        #hidden_dim=256,
+
         num_layers=10,
         num_heads=4,
         num_features=3,
