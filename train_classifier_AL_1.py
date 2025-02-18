@@ -199,7 +199,7 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     val_set = TensorDataset(
         jet1[int(0.8 * len(label)) :],
         padding_mask1[int(0.8 * len(label)) :],
-        jet2[int(0.8 * len(dat)) :],
+        jet2[int(0.8 * len(label)) :],
         padding_mask2[int(0.8 * len(label)) :],
         
         
