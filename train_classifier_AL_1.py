@@ -413,7 +413,7 @@ if __name__ == "__main__":
         )
     model.to(device)
     
-    
+    '''
     # Freeze the backbone (original_model)
     # Freeze feature embeddings
     for param in model.feature_embeddings.parameters():
@@ -430,7 +430,7 @@ if __name__ == "__main__":
     for param in model.dropout_layer.parameters():
         param.requires_grad = False
 
-
+    '''
     path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
 
     filtered_opt_state_dict=orig_load_opt_dict(args.model_path_in,path_to_sate_dict)
