@@ -160,7 +160,7 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     bg_jet1,bg_jet2 = load_data(bgf)
     sig_jet1,sig_jet2 = load_data(sigf)
 
-    print(f"Using bg {bg.shape} from {bgf} and sig {sig.shape} from {sigf}")
+    print(f"Using bg {bg_jet1.shape} from {bgf} and sig {sig_jet1.shape} from {sigf}")
 
     jet1_data = np.concatenate((bg_jet1, sig_jet1), 0)
     jet2_data = np.concatenate((bg_jet2, sig_jet2), 0)
