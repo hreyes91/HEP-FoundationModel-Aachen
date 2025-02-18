@@ -72,13 +72,13 @@ class JetTransformerAL(Module):
 
  
         # Classification head with MLP and Average Pooling
-        self.jet_mlp = nn.Linear(hidden_dim, 64)
-       # Classification head
+
+        # Classification head with MLP and Average Pooling
+        self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
         self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
-        self.mlp2 = nn.Linear(128, 100)
+        self.mlp2 = nn.Linear(128, 128)  # Hidden layer after pooling
         self.output = nn.Linear(128, 1)  # Binary classification
-
         
         # Criterion for binary classification
         self.criterion = torch.nn.BCEWithLogitsLoss()
