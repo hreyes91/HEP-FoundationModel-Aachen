@@ -180,7 +180,7 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
     ax1.grid()
     #plt.text(xtext,ytext,plot_text,dict(size=10))
     fig.suptitle(data_name)
-    plt.savefig(path_to_plots+'/hist_qqplot_'+data_name+'_new.png')
+    plt.savefig(path_to_plots+'/hist_qqplot_'+data_name+'.png')
     plt.close()
 
 
