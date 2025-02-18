@@ -30,7 +30,7 @@ num_layers_list=[8]
 hidden_dim_list=[256]
 batch_size_list=[100]
 num_events_list=[100000]
-num_const_list=[128]
+num_const_list=[100]
 lr_list=[.001]
 #num_events_val_max=500000
 
