@@ -525,7 +525,7 @@ if __name__ == "__main__":
 
             with torch.cuda.amp.autocast():
                 logits = model(jet1, jet2, padding_mask1, padding_mask2)
-                loss = model.loss(logits, label.view(-1, 1))
+                loss = model.loss(logits, label.view(-1, 1).float())
 
             scaler.scale(loss).backward()
             scaler.step(opt)
@@ -563,7 +563,7 @@ if __name__ == "__main__":
                 logits = model(
                                  jet1, jet2, padding_mask1, padding_mask2
                 )
-                loss = model.loss(logits, label.view(-1, 1))
+                loss = model.loss(logits, label.view(-1, 1).float())
                 val_loss.append(loss.cpu().detach().numpy())
                 val_loss_here=val_loss
             val_loss = np.mean(val_loss)
