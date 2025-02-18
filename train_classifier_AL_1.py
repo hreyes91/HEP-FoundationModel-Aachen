@@ -435,14 +435,14 @@ if __name__ == "__main__":
 
     filtered_opt_state_dict=orig_load_opt_dict(args.model_path_in,path_to_sate_dict)
     # construct optimizer and auto-caster
-    #opt = torch.optim.Adam(
-    #    model.parameters(), lr=args.lr, weight_decay=args.weight_decay
-    #)
+    opt = torch.optim.Adam(
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    )
     
     
     #freezed backbone
-    opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay
-    )
+    #opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay
+    #)
 
     #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
     print('model paramaters')
