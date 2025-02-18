@@ -168,8 +168,8 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     
     label = np.append(np.zeros(len(bg_jet1)), np.ones(len(sig_jet1)))
     
-    padding_mask1 = jet1_data[:, :, 0] != 0
-    padding_mask2 = jet2_data[:, :, 0] != 0
+    padding_mask1 = jet1_data[:, :, 0] != -1
+    padding_mask2 = jet2_data[:, :, 0] != -1
 
 
 
