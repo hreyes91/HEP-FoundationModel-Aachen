@@ -136,9 +136,7 @@ class JetTransformerAL(Module):
         seq_idx = torch.arange(seq_len, dtype=torch.long, device=jet_data.device)
         causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)  # Causal mask
         padding_mask = ~padding_mask  # Invert padding mask for transformer layers
-        print('padding mask')
-        print(padding_mask)
-        print('hello')
+
         #exit()
         # Apply transformer layers
         for layer in self.layers:
