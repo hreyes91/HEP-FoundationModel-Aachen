@@ -70,12 +70,15 @@ class JetTransformerAL(Module):
         self.out_norm = original_model.out_norm
         self.dropout_layer = original_model.dropout
 
+ 
         # Classification head with MLP and Average Pooling
-        self.mlp1 = nn.Linear(hidden_dim * 2, 100)  # Jet 1 and Jet 2 concatenated
-        self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Average pooling across jet constituents
-        #self.mlp2 = nn.Linear(100,100)  # MLP after pooling
-        self.mlp2 = nn.Linear(100,1)
-        self.output = nn.Linear(100, 1)  # Final binary classification output
+        self.jet_mlp = nn.Linear(hidden_dim, 64)
+       # Classification head
+        self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
+        self.mlp2 = nn.Linear(128, 128)
+        self.output = nn.Linear(128, 1)  # Binary classification
+
         
         # Criterion for binary classification
         self.criterion = torch.nn.BCEWithLogitsLoss()
@@ -88,6 +91,11 @@ class JetTransformerAL(Module):
         # Apply feature embeddings and transformer processing separately for each jet
         jet1_repr = self._process_jet(jet1, padding_mask1)  # Process jet1
         jet2_repr = self._process_jet(jet2, padding_mask2)  # Process jet2
+
+
+        jet1_repr = self.jet_mlp(jet1_repr)  # (batch, 64)
+        jet2_repr = self.jet_mlp(jet2_repr)  # (batch, 64)
+
 
         # Concatenate the representations of jet1 and jet2
         combined_repr = torch.cat([jet1_repr, jet2_repr], dim=-1)  # Shape: [batch_size, hidden_dim * 2]
