@@ -511,7 +511,7 @@ if __name__ == "__main__":
     for epoch in range(args.num_epochs):
         model.train()
         loss_list_here=[]
-        for jet1, jet2, padding_mask1, padding_mask2, label in tqdm(
+        for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}"
         ):
             opt.zero_grad()
@@ -548,7 +548,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             val_loss = []
             val_perplexity = []
-            for jet1, jet2, padding_mask1, padding_mask2, label in tqdm(
+            for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}"
             ):
                 jet1 = jet1.to(device)

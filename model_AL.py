@@ -129,7 +129,7 @@ class JetTransformerAL(Module):
         print('padding mask')
         print(padding_mask)
         print('hello')
-        exit()
+        #exit()
         # Apply transformer layers
         for layer in self.layers:
             emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
