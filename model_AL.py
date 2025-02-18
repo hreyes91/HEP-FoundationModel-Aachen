@@ -76,7 +76,7 @@ class JetTransformerAL(Module):
        # Classification head
         self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
-        self.mlp2 = nn.Linear(100, 128)
+        self.mlp2 = nn.Linear(128, 100)
         self.output = nn.Linear(128, 1)  # Binary classification
 
         
