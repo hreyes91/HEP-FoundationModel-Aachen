@@ -207,16 +207,17 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     train_loader = DataLoader(
         train_set,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=False,
     )
     val_loader = DataLoader(
         val_set,
         batch_size=args.batch_size,
+        shuffle=False)
     
     # Create the DataLoader
     #dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     
-    return train_loader,val_loader
+    return train_loader, val_loader
 
 
 
