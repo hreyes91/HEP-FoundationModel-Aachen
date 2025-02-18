@@ -118,14 +118,14 @@ def parse_input():
 
 def load_data(file):
 
-    jet1 = pd.read_hdf(file, key="discretized_jet0")
+    jet1 = pd.read_hdf(file, key="discretized_jet1")
     jet1 = jet1.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
     jet1 = jet1.reshape(jet1.shape[0], -1, 3)
 
     jet1 = np.delete(jet1, np.where(jet1[:, 0, 0] == 0)[0], axis=0)
     jet1[jet1 == -1] = 0
     
-    jet2 = pd.read_hdf(file, key="discretized_jet1")
+    jet2 = pd.read_hdf(file, key="discretized_jet2")
     jet2 = jet2.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
     jet2 = jet2.reshape(jet2.shape[0], -1, 3)
 

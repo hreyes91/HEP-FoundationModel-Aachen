@@ -309,13 +309,12 @@ def discretize_data(
         # Write dataframes into compressed hdf5 file
     
     #raw.to_hdf(output_file, key="raw", mode="w", complevel=9)
-    k=0
-    for disc in disc_list:
+ 
+    for k in range(len(disc_list)):
         if k==0:
-            disc.to_hdf(output_file, key="discretized_jet"+str(k), mode="w", complevel=9)
-        else:
-            disc.to_hdf(output_file, key="discretized_jet"+str(k), mode="w", complevel=9)
-        ++k
+            disc_list[k].to_hdf(output_file, key="discretized_jet"+str(k+1), mode="w", complevel=9)
+
+        else:disc_list[k].to_hdf(output_file, key="discretized_jet"+str(k+1), mode="r+", complevel=9)
 
     print("\nDiscretized dataframe description")
     print(disc.describe())
