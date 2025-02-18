@@ -4,7 +4,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from argparse import ArgumentParser
 
-from model_finetune import JetTransformerClassifierFine
+from model_AL import JetTransformerAL
+
+
 
 from tqdm import tqdm
 import pandas as pd
