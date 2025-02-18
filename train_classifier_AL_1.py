@@ -401,9 +401,9 @@ if __name__ == "__main__":
     original_model = torch.load(os.path.join(args.model_path_in, args.model_name))
     # construct model
     model = JetTransformerAL(original_model,
-        #hidden_dim=args.hidden_dim,
+        hidden_dim=args.hidden_dim,
         original_model,
-        hidden_dim=256,
+        #hidden_dim=256,
         num_layers=10,
         num_heads=4,
         num_features=3,
