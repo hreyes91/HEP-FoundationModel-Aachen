@@ -398,7 +398,10 @@ if __name__ == "__main__":
     
 ######################################################################
 
-    original_model = torch.load(os.path.join(args.model_path_in, args.model_name))
+    #original_model = torch.load(os.path.join(args.model_path_in, args.model_name))
+    original_model = torch.load(os.path.join(args.model_path_in, args.model_name), map_location=device)
+    
+    
     # construct model
     model = JetTransformerAL(original_model,
         hidden_dim=args.hidden_dim,
@@ -412,6 +415,13 @@ if __name__ == "__main__":
         
         )
     model.to(device)
+    
+    
+    
+    
+    ##########Loading backbone ######################
+
+    
     
     '''
     # Freeze the backbone (original_model)
@@ -431,14 +441,32 @@ if __name__ == "__main__":
         param.requires_grad = False
 
     '''
+    ###I get the state dict, filtered, i.e. the last layer of the backbone is taken out and I get what I need
     path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
-
     filtered_opt_state_dict=orig_load_opt_dict(args.model_path_in,path_to_sate_dict)
+    
     # construct optimizer and auto-caster
     opt = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     
+    
+    full_opt_state_dict = opt.state_dict()
+    # Merge optimizer states: Keep backbone params and update fine-tune params
+    merged_opt_state_dict = {"state": {}, "param_groups": full_opt_state_dict["param_groups"]}
+
+    # Copy over backbone optimizer states
+    for k, v in filtered_opt_state_dict.items():
+        if k in full_opt_state_dict["state"]:  # Ensure matching params exist
+            merged_opt_state_dict["state"][k] = v
+
+    # Add fine-tuning parameters (those not in the filtered state)
+    for k, v in full_opt_state_dict["state"].items():
+        if k not in merged_opt_state_dict["state"]:
+            merged_opt_state_dict["state"][k] = v  # Add fine-tune params
+
+    # Load the updated state dict into the optimizer
+    opt.load_state_dict(merged_opt_state_dict)
     
     #freezed backbone
     #opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay
@@ -450,9 +478,13 @@ if __name__ == "__main__":
     print('opt state dict')
     print(opt.state_dict())
     
-    last2paramgroups, last2state,last_keys=GetLast2Layers(opt.state_dict())
-    filtered_opt_state_dict= AddLayersToDict(filtered_opt_state_dict,last2state,last2paramgroups,last_keys)
-    opt.load_state_dict(filtered_opt_state_dict)
+    #last2paramgroups, last2state,last_keys=GetLast2Layers(opt.state_dict())
+    
+    #filtered_opt_state_dict= AddLayersToDict(filtered_opt_state_dict,last2state,last2paramgroups,last_keys)
+    
+
+    
+    #opt.load_state_dict(filtered_opt_state_dict)
     
     print(opt.state_dict())
     scheduler = get_cos_scheduler(
