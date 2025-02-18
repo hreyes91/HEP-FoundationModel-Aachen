@@ -75,9 +75,7 @@ def parse_input():
     #    "--num_events", type=int, default=None, help="Number of events for training"
     #)
     
-    parser.add_argument(
-        "--num_const", type=int, default=100, help="Max Number of constituents"
-    )
+
     
     parser.add_argument(
         "--num_bins",
