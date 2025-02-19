@@ -13,7 +13,7 @@ n_epochs='_30_epochs'
 n_samples='_200k_samples'
 path_to_plots='plots_'+data+n_events+n_epochs+n_samples
 
-filename_samples='/net/data_ttk/koller/model_data_'+data+'_10M_train_ev_30_ep/samples_test.h5'
+filename_samples='/net/data_ttk/koller/model_data/model_data_'+data+'_10M_train_ev_30_ep/samples_test.h5'
 pt_bins=np.load('/net/data_ttk/hreyes/OneBin/preprocessing_bins/pt_bins_1Mfromeach_403030.npy')
 eta_bins=np.load('/net/data_ttk/hreyes/OneBin/preprocessing_bins/eta_bins_1Mfromeach_403030.npy')
 phi_bins=np.load('/net/data_ttk/hreyes/OneBin/preprocessing_bins/phi_bins_1Mfromeach_403030.npy')
