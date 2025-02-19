@@ -117,8 +117,8 @@ def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,ptj_true,mj_true,path
 def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
     xlabel=data_name
 
-    #wd,ks=test_metrics(data_true,data_samp)
-    #plot_text='Wasserstein distance:\n   '+str(round(wd,5))+'\nKS test:\n   statistic '+str(round(ks[0],5))+', p-value '+str(round(ks[1],5))
+    wd,ks=test_metrics(data_true,data_samp)
+    plot_text='Wasserstein distance:\n   '+str(round(wd,5))+'\nKS test:\n   statistic '+str(round(ks[0],5))+', p-value '+str(round(ks[1],5))
     
     if len(data_true)!=len(data_samp):
         len_plot=min(len(data_true),len(data_samp))
@@ -143,7 +143,7 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
         data_samp=np.log(data_samp)
         xlabel='$\log (p_T)$'
 
-    fig,(ax0,ax1)=plt.subplots(1,2,figsize=(10,5))
+    fig,(ax0,ax1)=plt.subplots(1,2,figsize=(12,5),gridspec_kw=dict(width_ratios=[2,3]))
     '''hist_true,_=np.histogram(data_true,bins=bins,density=True)
     hist_samp,_=np.histogram(data_samp,bins=bins,density=True)
     hist=hist_true-hist_samp'''
@@ -178,9 +178,10 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
     #ax1.set_title('Quantile-quantile plot')
     ax1.legend()
     ax1.grid()
+    ax1.text(1.03,0.98,plot_text,transform=ax1.transAxes,fontsize=12,verticalalignment='center',bbox=dict(boxstyle='round', facecolor='grey', alpha=0.15))
     #plt.text(xtext,ytext,plot_text,dict(size=10))
     fig.suptitle(data_name)
-    plt.savefig(path_to_plots+'/hist_qqplot_'+data_name+'.png')
+    plt.savefig(path_to_plots+'/hist_qqplot_wd_ks_'+data_name+'.png')
     plt.close()
 
 
