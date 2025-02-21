@@ -55,7 +55,35 @@ def make_continues(jets, mask,pt_bins,eta_bins,phi_bins, noise=False):
 
     return continues_jets, ptj, mj
 
-def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,ptj_true,mj_true,path_to_plots,n_events,n_epochs,n_samples,data_class):
+def comp_topk_plots(mj_data,path_to_plots,data_name):
+    n=len(mj_data)
+    label=['k=1000','k=2000','k=2500','k=3000','k=4000','k=5000','k=5500','k=6000','JetClass']
+    wd_list=np.empty(len(mj_data)-1)
+    colors = plt.cm.rainbow_r(np.linspace(0,1,n-1))
+    bins = np.linspace(0, 700, 200)
+    fig,ax=plt.subplots(1,figsize=(8,5))
+    ax.set_xlabel('')
+    for i in range(n):
+        mj=mj_data[i]
+        mj=(mj[~np.isnan(mj)])
+        if i<n-1:
+            wd,ks=test_metrics(mj_data[-1],mj)
+            wd_list[i]=wd
+            label[i]+=', WS: '+str(round(wd,5))
+            ax.hist(mj,bins=bins,color=colors[i],histtype='step',density=True,log=True,label=label[i],alpha=0.65)
+        else:
+            ax.hist(mj,bins=bins,color='black',histtype='step',density=True,log=True,label=label[i],alpha=0.65)
+    ax.grid()
+    ax.legend()
+    fig.suptitle(data_name)
+    plt.savefig(path_to_plots+'/hist_mj_topk_'+data_name+'.png')
+    plt.close()
+    print(wd_list)
+    print(min(wd_list))
+    return np.argmin(wd_list)
+
+
+def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,mj_true,path_to_plots):
     
     pt_true=(jets_true[:,:,0]).flatten()
     pt_samp=(jets[:,:,0]).flatten()
@@ -92,26 +120,6 @@ def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,ptj_true,mj_true,path
     qq_plot(mul_true,mul_samp,'multiplicity',path_to_plots,mul_bins,'step')
     qq_plot(mj_true,mj_samp,'mj',path_to_plots,mj_bins,'step')
 
-    wd_mul,ks_mul=test_metrics(mul_true,mul_samp)
-    print("wasserstein distance multiplicity:",wd_mul)
-    print("ks test multiplicity:",ks_mul)
-
-    wd_pt,ks_pt=test_metrics(pt_true,pt_samp)
-    print("wasserstein distance pt:",wd_pt)
-    print("ks test pt:",ks_pt)
-
-    wd_eta,ks_eta=test_metrics(eta_true,eta_samp)
-    print("wasserstein distance eta:",wd_eta)
-    print("ks test eta:",ks_eta)
-
-    wd_phi,ks_phi=test_metrics(phi_true,phi_samp)
-    print("wasserstein distance phi:",wd_phi)
-    print("ks test phi:",ks_phi)
-
-    wd_mj,ks_mj=test_metrics(mj_true,mj_samp)
-    print("wasserstein distance mj:",wd_mj)
-    print("ks test mj:",ks_mj)
-
     return mul_samp, mul_true, pt_samp, pt_true
 
 def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
@@ -128,29 +136,12 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
         data_true_sorted=np.sort(data_true)
         data_samp_sorted=np.sort(data_samp)
 
-
-    xmin=np.nanmin(data_true)-0.1*np.absolute(np.nanmin(data_true))
-    xmax=1.1*np.nanmax(data_true)
-    ymin=np.nanmin(data_samp)-0.1*np.absolute(np.nanmin(data_samp))
-    ymax=1.1*np.nanmax(data_samp)
-    pos_left=0.1
-    pos_right=0.8
-    xtext=(xmax-xmin)/(pos_right-pos_left)*xmax
-    ytext=0.5*(ymin+ymax)
-
     if data_name=='pt':
         data_true=np.log(data_true)
         data_samp=np.log(data_samp)
         xlabel='$\log (p_T)$'
 
-    fig,(ax0,ax1)=plt.subplots(1,2,figsize=(12,5),gridspec_kw=dict(width_ratios=[2,3]))
-    '''hist_true,_=np.histogram(data_true,bins=bins,density=True)
-    hist_samp,_=np.histogram(data_samp,bins=bins,density=True)
-    hist=hist_true-hist_samp'''
-    #ax2=plt.subplot(212)
-    #ax2.hist(hist,bins=bins,density=True,color='seagreen')
-
-    #ax0=plt.subplot(221)
+    fig,(ax0,ax1,ax2)=plt.subplots(1,3,figsize=(12,5),gridspec_kw=dict(width_ratios=[0.4,0.4,0.2]))
     if data_name=='mj':
         ax0.hist(data_true,bins=bins,color='dodgerblue',label='true',histtype=htype,density=True,log=True)
         ax0.hist(data_samp,bins=bins,color='red',label='sampled',histtype=htype,density=True,log=True)
@@ -169,17 +160,14 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype):
     ax0.legend()
     #ax0.set_title('Normalized distribution')
 
-    #ax1=plt.subplot(222)
     ax1.plot([0,np.nanmin(data_true_sorted),np.nanmax(data_true_sorted)],[0,np.nanmin(data_true_sorted),np.nanmax(data_true_sorted)],color='black',label='diagonal')
     ax1.scatter(data_true_sorted,data_samp_sorted,marker='.',color='blueviolet',alpha=0.65,s=3)   #zorder=2.5,
     ax1.set_xlabel('true data')
     ax1.set_ylabel('sampled data')
-    #ax1.set_ylim(ymin,ymax)
-    #ax1.set_title('Quantile-quantile plot')
     ax1.legend()
     ax1.grid()
-    ax1.text(1.03,0.98,plot_text,transform=ax1.transAxes,fontsize=12,verticalalignment='center',bbox=dict(boxstyle='round', facecolor='grey', alpha=0.15))
-    #plt.text(xtext,ytext,plot_text,dict(size=10))
+    ax2.axis('off')
+    ax2.text(1.05,0.75,plot_text,transform=ax1.transAxes,fontsize=12,verticalalignment='center',bbox=dict(boxstyle='round', facecolor='white', alpha=0))
     fig.suptitle(data_name)
     plt.savefig(path_to_plots+'/hist_qqplot_wd_ks_'+data_name+'.png')
     plt.close()
@@ -190,7 +178,7 @@ def LoadTrue(discrete_truedata_filename,n_samples,pt_bins,eta_bins,phi_bins):
 
     tmp = pd.read_hdf(discrete_truedata_filename, key="discretized", stop=None)
     #print(tmp.shape) 
-    tmp=tmp.sample(n_samples)
+    #tmp=tmp.sample(n_samples)
     tmp = tmp.to_numpy()[:, :600].reshape(len(tmp), -1, 3)
 
     tmp=tmp[:,:,:]
@@ -206,7 +194,7 @@ def LoadSGenamples(filename,pt_bins,eta_bins,phi_bins,n_samples):
 
     tmp = pd.read_hdf(filename, key="discretized", stop=None)
     #print(tmp.shape)
-    tmp=tmp.sample(frac=1)
+    #tmp=tmp.sample(frac=1)
     tmp = tmp.to_numpy()[:, :600].reshape(len(tmp), -1, 3)
 
     mask = tmp[:, :, 0] == -1
