@@ -119,14 +119,14 @@ def TestResults(dict_auc,model_dir,r_tresh):
 
 
     arguments_file=read_file(model_dir+'/arguments.txt')
-    num_events_train=extract_value('num_events',arguments_file)
+    num_events_train=extract_value('sig',arguments_file)
     print(num_events_train)
 
 
     predictions=GetPredictions(model_dir)
     auc_score,r_val,acc=TestMetrics(predictions,r_tresh)
 
-    dict_auc.get('num_events').append(num_events_train)
+    dict_auc.get('sig').append(num_events_train)
     dict_auc.get('auc').append(auc_score)
     dict_auc.get('r_'+str(r_tresh)).append(r_val)
     dict_auc.get('acc').append(acc)
