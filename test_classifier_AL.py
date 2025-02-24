@@ -257,8 +257,7 @@ if __name__ == '__main__':
 
     # load and preprocess data
     print(f"Loading test set")
-    test_loader = load_data(args.data_path_1,args.data_path_2 , args.num_events)
-
+    test_loader = get_dataloader(args.data_path_1,args.data_path_2)
     # construct model
     model = load_model('best')
     print("Loaded model")
