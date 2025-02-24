@@ -147,7 +147,7 @@ data_path_1=main_dir_discrete+'discrete_bg-N100-SR-Test_1Mfromeach_403030.h5'
 data_path_2=main_dir_discrete+'discrete_sn-N100-SR-Test_1Mfromeach_403030.h5'
 num_events_test=100000
 r_tresh=.3
-dict_auc={'suffix':[],'num_events':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
+dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
