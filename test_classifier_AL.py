@@ -156,7 +156,7 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     jet2 = torch.tensor(jet2_data, dtype=torch.float32)
     padding_mask1 = torch.tensor(padding_mask1, dtype=torch.bool)
     padding_mask2 = torch.tensor(padding_mask2, dtype=torch.bool)
-    label = torch.tensor(labels, dtype=torch.float32)  # For BCEWithLogitsLoss, labels should be float32
+    label = torch.tensor(label, dtype=torch.float32)  # For BCEWithLogitsLoss, labels should be float32
     
     
     test_set = TensorDataset(
