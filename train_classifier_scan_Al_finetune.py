@@ -23,6 +23,12 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 sig_list=['discrete_Weak-mix-Train-10000_1Mfromeach_403030.h5']
 bg_list=['discrete_bg-N100-SR-Train_1Mfromeach_403030.h5']
+
+#test_data
+data_path_1=main_dir_discrete+'discrete_bg-N100-SR-Test_1Mfromeach_403030.h5'
+data_path_2=main_dir_discrete+'discrete_sn-N100-SR-Test_1Mfromeach_403030.h5'
+num_events_test=100000
+
 num_epochs_list=[1]
 dropout_list=[0.0]
 num_heads_list=[4]
@@ -63,4 +69,14 @@ for sig in sig_list:
                                                     name_sufix=random_string()
                                                     train_command='python train_classifier_AL_1.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
                                                     os.system(train_command)
+                                                    
+                                                    
+                                                    
+                                                    model_dir=log_dir+'_'+name_sufix
+                                                    
+                                                    test_command='python test_classifier_cls.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
+                                                    
+                                                    os.system(test_command)
+                                                    TestResults(dict_auc,model_dir,r_tresh)
+                                                    dict_auc.get('suffix').append(name_sufix)
 
