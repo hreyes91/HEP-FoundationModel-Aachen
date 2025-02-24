@@ -230,17 +230,26 @@ def plot_rocs(model, val_loader, tag):
     preds = []
     model.eval()
     with torch.no_grad():
-        for x, padding_mask, label in tqdm(
-            val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}"
+        for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
+            train_loader, total=len(train_loader), desc=f"Validation Epoch {epoch + 1}"
         ):
-            x = x.to(device)
-            padding_mask = padding_mask.to(device)
+            jet1 = jet1.to(device)
+            padding_mask1 = padding_mask1.to(device)
+            
+            jet2 = jet2.to(device)
+            padding_mask2 = padding_mask2.to(device)
+            
+            
             label = label.to(device)
 
             logits = model(
-                x,
-                padding_mask,
-            )
+                                jet1, jet2, padding_mask1, padding_mask2
+                )
+                loss = model.loss(logits, label.view(-1, 1).float())
+
+
+            logits = model(jet1, jet2, padding_mask1, padding_mask2)
+                
             preds.append(logits.cpu().numpy())
             labels.append(label.cpu().numpy())
 
