@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 import string
+from sklearn.metrics import roc_curve, roc_auc_score,accuracy_score
 
 def random_string():
     # initializing size of string
