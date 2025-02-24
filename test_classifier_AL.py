@@ -270,7 +270,7 @@ if __name__ == '__main__':
     logits_list=[]
     min_val_loss = np.inf
     with torch.no_grad():
-        for jet1, jet2, padding_mask1, padding_mask2, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
+        for jet1, padding_mask1,jet2, padding_mask2, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
             label_list.append(label.detach().numpy())
             
             jet1 = jet1.to(device)
