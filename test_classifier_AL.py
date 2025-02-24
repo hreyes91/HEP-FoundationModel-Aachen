@@ -212,6 +212,9 @@ def parse_input():
     
     
 
+
+
+
 def plot_roc_curve(y_true, y_score,model_dir):
     # Compute ROC curve and ROC area for each class
     fpr, tpr, _ = roc_curve(y_true, y_score)
@@ -229,7 +232,27 @@ def plot_roc_curve(y_true, y_score,model_dir):
     plt.title('ROC Curve')
     plt.legend(loc="lower right")
     plt.savefig(model_dir+'/roc_test_1fpr.png')
+    plt.close()
+    
+    
+    
+    sic_values = np.where(fpr > 0, tpr / np.sqrt(fpr), 0)
+
+    # Plot SIC curve
+    plt.figure(figsize=(8, 6))
+    plt.plot(tpr, sic_values, label='SIC Curve', color='b', lw=2)
+    plt.xlabel("Signal Efficiency (εS)")
+    plt.ylabel("Significance Improvement Factor (SIF)")
+    plt.title("Significance Improvement Characteristic (SIC) Curve")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(model_dir+'/sic_curve.png')
+    
     return
+
+
+
+
 
 
 def saveAUCscore(model_dir,auc_score):
