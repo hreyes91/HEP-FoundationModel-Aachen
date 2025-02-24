@@ -23,7 +23,7 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 sig_list=['discrete_Weak-mix-Train-10000_1Mfromeach_403030.h5']
 bg_list=['discrete_bg-N100-SR-Train_1Mfromeach_403030.h5']
-num_epochs_list=[5]
+num_epochs_list=[1]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]

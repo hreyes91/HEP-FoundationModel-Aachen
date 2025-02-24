@@ -26,7 +26,7 @@ from helpers_train import (
 )
 
 torch.multiprocessing.set_sharing_strategy("file_system")
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 def parse_input():
     parser = ArgumentParser()
@@ -578,16 +578,16 @@ if __name__ == "__main__":
         )
         mean_loss=np.mean(loss_list)
         mean_val=val_loss
-        loss_list_epoch.extend(loss_list_here)
-        val_list_epoch.extend(val_loss_here)
-    print(loss_list_epoch)
+        loss_list_epoch.append(mean_loss)
+        val_list_epoch.append(mean_val)
+    #print(loss_list_epoch)
     print(len(loss_list_epoch))
-    print(val_list_epoch)
+    #print(val_list_epoch)
     print(len(val_list_epoch))
     
     
     history={'loss':loss_list_epoch,'val_loss':val_list_epoch}
-    
+    #print(history)    
     history_frame=pd.DataFrame(history)
     history_frame.to_csv(os.path.join(args.log_dir, "history.txt"),index=False)
     
