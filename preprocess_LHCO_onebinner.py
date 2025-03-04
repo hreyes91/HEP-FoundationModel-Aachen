@@ -159,27 +159,33 @@ def discretize_data(
     nJets=None,
 ):
     def read_input():
-    
+        print('will read file')
         f=h5py.File(input_file, 'r')
        
         
-        #data1=f.get('jet_1_feat')[:,:,0:3]
-        data1=f.get('jet_1_feat').astype(np.float64)[:,:,0:3]
+        jet1=f.get('jet_1_feat')[:,:,0:3]
+        jet2=f.get('jet_2_feat')[:,:,0:3]
+        print(jet1)
+        
+        #jet1=f.get('jet_1_4m').astype(np.float64)[:,:,0:4]
      
         
-        data2=f.get('jet_2_feat').astype(np.float64)[:,:,0:3]
+        #jet2=f.get('jet_2_4m').astype(np.float64)[:,:,0:4]
         
         
         
      
         
-        return data1,data2
+        return jet1,jet2
 
-
+    def rearrange_jet_data(jet_data):
+        """Rearrange jet data from [eta, phi, log(pt)] to [log(pt), eta, phi]."""
+        return jet_data[..., [2, 0, 1]]
 
 
     def calculate_features(momenta):
-        jets = data.sum(1)
+        jets = momenta.sum(1)
+
         jets_p = np.sqrt(np.square(jets[:, 1:]).sum(1))
         # jets_pt = np.sqrt(np.square(jets[:, 1:3]).sum(1))
         jets_phi = np.arctan2(jets[:, 2], jets[:, 1])
@@ -203,10 +209,10 @@ def discretize_data(
     
     def Get_features(data):
     
-        const_pt=np.exp(data[:,:,2])
-        d_eta=data[:,:,0]
-        d_phi=data[:,:,1]
-    
+        const_pt=data[:,:,0]
+        d_eta=data[:,:,1]
+        d_phi=data[:,:,2]
+        d_phi = (d_phi + np.pi) % (2 * np.pi) - np.pi
         return const_pt,d_eta,d_phi
 
     def trunc(values, decs=8):
@@ -226,12 +232,15 @@ def discretize_data(
     def get_binning():
         '''
         # If QCD training as input, get the bins
-        if "train" in str(input_file):
+        if ("bg" in str(input_file)) and ("Train" in str(input_file)):
             pt_bins = np.linspace(
                 np.quantile(np.log(const_pt[const_pt != 0]), lower_q),
                 np.quantile(np.log(const_pt[const_pt != 0]), upper_q),
                 nBins[0],
             )
+            
+            print(pt_bins)
+        
             eta_bins = np.linspace(-0.8, 0.8, nBins[1])
             phi_bins = np.linspace(-0.8, 0.8, nBins[2])
 
@@ -243,15 +252,21 @@ def discretize_data(
             np.save(f"preprocessing_bins/phi_bins_{tag}", phi_bins)
             print("Created bins\n")
         # Else load the binning according to given tag
+        
+
+
+        else:
+            print('preprocessing bins should exist')
+        
+            
+        
+            pt_bins = np.load(f"preprocessing_bins/pt_bins_{tag}.npy")
+            eta_bins = np.load(f"preprocessing_bins/eta_bins_{tag}.npy")
+            phi_bins = np.load(f"preprocessing_bins/phi_bins_{tag}.npy")
+        
+        
+        
         '''
-
-
-        
-        print('preprocessing bins should exist')
-        #pt_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
-        #eta_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
-        #phi_bins = np.load(f"/net/data_ttk/hreyes/OneBin/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
-        
         pt_bins = np.load(f"//Users/humbertosmac/Dropbox/Transformers/OptimalClassifier/Data/SameBin/OptimalClassifierSamplesSameBinGen/TrueJetClass/preprocessing_bins/pt_bins_1Mfromeach_403030.npy")
         eta_bins = np.load(f"/Users/humbertosmac/Dropbox/Transformers/OptimalClassifier/Data/SameBin/OptimalClassifierSamplesSameBinGen/TrueJetClass/preprocessing_bins/eta_bins_1Mfromeach_403030.npy")
         phi_bins = np.load(f"/Users/humbertosmac/Dropbox/Transformers/OptimalClassifier/Data/SameBin/OptimalClassifierSamplesSameBinGen/TrueJetClass/preprocessing_bins/phi_bins_1Mfromeach_403030.npy")
@@ -259,11 +274,19 @@ def discretize_data(
         
         
         print(f"\nLoaded bins with tag {tag}\n")
+      
         return pt_bins, eta_bins, phi_bins
 
-    def discretize():
+    def discretize(const_pt, d_eta, d_phi,pt_bins, eta_bins, phi_bins):
         # Get the discrete values
+        
+        #print(np.log(const_pt))
+       
         const_pt_disc = np.digitize(np.log(const_pt), pt_bins).astype(np.int16)
+        
+        print('const_pt_disc')
+        print(const_pt_disc)
+      
         d_eta_disc = np.digitize(d_eta, eta_bins).astype(np.int16)
         d_phi_disc = np.digitize(d_phi, phi_bins).astype(np.int16)
 
@@ -286,38 +309,62 @@ def discretize_data(
 
     print(f"Input: {input_file}\nOutput: {output_file}")
 
-    data = read_input()
+    jet1,jet2 = read_input()
+    print('got jets')
     #data=[data1,data2]
-    disc_list=[]
-    for jet in data:
-        print(f"Data shape: {jet.shape}\n")
-        #const_pt, d_eta, d_phi = calculate_features(data)
-        const_pt, d_eta, d_phi = Get_features(jet)
-        check_pt_oredering(const_pt)
+    jet1=rearrange_jet_data(jet1[:,:,:3])
+    jet2=rearrange_jet_data(jet2[:,:,:3])
 
-        pt_bins, eta_bins, phi_bins = get_binning()
-        const_pt_disc, d_eta_disc, d_phi_disc = discretize()
+    
+    
+    ###jet1
+    print(f"Data shape: {jet1.shape}\n")
+    #const_pt, d_eta, d_phi = calculate_features(jet2)
+    const_pt, d_eta, d_phi = Get_features(jet1)
+    check_pt_oredering(const_pt)
 
-        print(f"\npT bin range: {const_pt_disc[const_pt!=0].min()} {const_pt_disc.max()}")
-        print(f"eta bin range: {d_eta_disc[const_pt!=0].min()} {d_eta_disc.max()}")
-        print(f"phi bin range: {d_phi_disc[const_pt!=0].min()} {d_phi_disc.max()}\n")
 
-        # Collect continuous data in dataframe
-        #raw = get_df(const_pt, d_eta, d_phi)
-        disc = get_df(const_pt_disc, d_eta_disc, d_phi_disc)
-        disc_list.append(disc)
+
+
+    pt_bins, eta_bins, phi_bins = get_binning()
+    const_pt_disc, d_eta_disc, d_phi_disc = discretize(const_pt, d_eta, d_phi,pt_bins, eta_bins, phi_bins)
+
+
+
+    print(f"\npT bin range: {const_pt_disc[const_pt!=0].min()} {const_pt_disc.max()}")
+    print(f"eta bin range: {d_eta_disc[const_pt!=0].min()} {d_eta_disc.max()}")
+    print(f"phi bin range: {d_phi_disc[const_pt!=0].min()} {d_phi_disc.max()}\n")
+
+    # Collect continuous data in dataframe
+    #raw = get_df(const_pt, d_eta, d_phi)
+   
+    disc1 = get_df(const_pt_disc, d_eta_disc, d_phi_disc)
+    disc1.to_hdf(output_file, key="discretized_jet1", mode="w", complevel=9)
+    
+    #####jet 2
+    #const_pt, d_eta, d_phi = calculate_features(jet1)
+    const_pt, d_eta, d_phi = Get_features(jet2)
+    check_pt_oredering(const_pt)
+
+    pt_bins, eta_bins, phi_bins = get_binning()
+    const_pt_disc, d_eta_disc, d_phi_disc = discretize(const_pt, d_eta, d_phi,pt_bins, eta_bins, phi_bins)
+
+    print(f"\npT bin range: {const_pt_disc[const_pt!=0].min()} {const_pt_disc.max()}")
+    print(f"eta bin range: {d_eta_disc[const_pt!=0].min()} {d_eta_disc.max()}")
+    print(f"phi bin range: {d_phi_disc[const_pt!=0].min()} {d_phi_disc.max()}\n")
+
+    # Collect continuous data in dataframe
+    #raw = get_df(const_pt, d_eta, d_phi)
+    disc2 = get_df(const_pt_disc, d_eta_disc, d_phi_disc)
+
         # Write dataframes into compressed hdf5 file
     
-    #raw.to_hdf(output_file, key="raw", mode="w", complevel=9)
- 
-    for k in range(len(disc_list)):
-        if k==0:
-            disc_list[k].to_hdf(output_file, key="discretized_jet"+str(k+1), mode="w", complevel=9)
-
-        else:disc_list[k].to_hdf(output_file, key="discretized_jet"+str(k+1), mode="r+", complevel=9)
+        #raw.to_hdf(output_file, key="raw", mode="w", complevel=9)
+    
+    disc2.to_hdf(output_file, key="discretized_jet2", mode="r+", complevel=9)
 
     print("\nDiscretized dataframe description")
-    print(disc.describe())
+    print(disc2.describe())
 
 
 if __name__ == "__main__":
@@ -328,13 +375,16 @@ if __name__ == "__main__":
     parser.add_argument("--tag", type=str)
     parser.add_argument("--nBins", "-n", type=int, nargs=3)
     parser.add_argument("--input_file", "-I", type=str)
-    parser.add_argument("--lower_q", "-l", type=float, default=0.001)
+    parser.add_argument("--lower_q", "-l", type=float, default=0.0001)
     parser.add_argument("--upper_q", "-u", type=float, default=1.0)
     parser.add_argument("--nJets", "-N", type=int, default=None)
     args = parser.parse_args()
 
-    
-    output_file='discrete_'+args.tag+'.h5'
+    file_name=args.input_file.split('/')[-1]
+    output_file='LHCO_discrete/discrete_1Mfromeach_403030_'+file_name
+    print('HELLO')
+    print(output_file)
+    print(args.input_file)
     discretize_data(
   
         tag=args.tag,
