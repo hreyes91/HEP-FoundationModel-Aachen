@@ -47,24 +47,36 @@ def plot_llr_roc(data,label,name,num):
     plt.grid(which='both',color='grey',lw=0.5)
     plt.xlabel('log-likelihood ratio')
     plt.ylabel('normalized distribution')
-    plt.savefig('plots_llr/plot_llr_'+name)
+    plt.savefig('plots_llr/plot_llr_'+name+'.png')
 
     labels=np.append(np.zeros(len(data[1])),np.ones(len(data[0])))
     predictions=np.append(data[1],data[0])
     roc=roc_curve(labels,predictions)
+    auc=roc_auc_score(labels,predictions)
+    R_30_ind=np.argmin(np.abs(roc[1]-0.3))
+    #print(R_30_ind,roc[1][R_30_ind-1],roc[1][R_30_ind],roc[1][R_30_ind+1])
+    R_30=1/roc[0][R_30_ind]
+    R_50_ind=np.argmin(np.abs(roc[1]-0.5))
+    #print(R_50_ind,roc[1][R_50_ind-1],roc[1][R_50_ind],roc[1][R_50_ind+1])
+    R_50=1/roc[0][R_50_ind]
     plt.figure()
     plt.scatter(roc[1],1/roc[0],color='orangered',marker='.',zorder=3,s=5)
+    plt.scatter(roc[1][R_30_ind],R_30,color='black',marker='.',label='$R_{30}=$'+str(round(R_30,5)),zorder=5)
+    plt.scatter(roc[1][R_50_ind],R_50,color='black',marker='.',label='$R_{50}=$'+str(round(R_50,5)),zorder=5)
+    plt.hlines([R_30,R_50],[0,0],[roc[1][R_30_ind],roc[1][R_50_ind]],color='black',linestyle='dashed',linewidth=1)
+    plt.vlines([roc[1][R_30_ind],roc[1][R_50_ind]],[0,0],[R_30,R_50],color='black',linestyle='dashed',linewidth=1)
+    plt.scatter(0,0,color='white',label='auc: '+str(auc))
     plt.xlim((0,1))
     plt.yscale('log')
     plt.xlabel('$\epsilon_{top}$')
     plt.ylabel('$1/\epsilon_{QCD}$')
+    plt.legend()
     plt.title('ROC-curve '+label[0]+'/'+label[1])
 
-    auc=roc_auc_score(labels,predictions)
-    print('auc: ',auc)
-    plt.text(0.6,13000,'auc: '+str(auc))
+    #print('auc: ',auc)
+    #plt.text(0.6,13000,'auc: '+str(auc))
     plt.grid(which='both',color='grey',lw=0.5)
-    plt.savefig('plots_llr/plot_roc_'+name)
+    plt.savefig('plots_llr/plot_roc_'+name+'.png')
 
 
 data_qcd_JetClass=np.load('/net/data_ttk/koller/model_data/model_data_ZToNuNu_10M_train_ev_30_ep/results_test.npz')['probs']
@@ -102,11 +114,11 @@ s_zqq_qcd_z=data_zqq_z_samples-data_qcd_z_samples
 s_wqq_qcd_w=data_wqq_w_samples-data_qcd_w_samples
 s_hgg_qcd_h=data_hgg_h_samples-data_qcd_h_samples
 
-plot_ll_dist([data_hgg_JetClass,data_hgg_h_samples,data_ttbar_top_samples,data_ttbar_JetClass,data_wqq_w_samples,data_wqq_JetClass,data_zqq_z_samples,data_zqq_JetClass,data_qcd_qcd_samples,data_qcd_JetClass],'JetClass log-likelihood distributions','_jetclass_dist',0)
-plot_ll_dist([data_ttbar_top_samples,data_ttbar_qcd_samples,data_qcd_qcd_samples,data_qcd_top_samples],'samples log-likelihood distributions','_top_qcd_samp_dist',1)
-plot_ll_dist([data_zqq_z_samples,data_zqq_qcd_samples,data_qcd_qcd_samples,data_qcd_z_samples],'samples log-likelihood distributions','_z_qcd_samp_dist',2)
-plot_ll_dist([data_wqq_w_samples,data_wqq_qcd_samples,data_qcd_qcd_samples,data_qcd_w_samples],'samples log-likelihood distributions','_w_qcd_samp_dist',3)
-plot_ll_dist([data_hgg_h_samples,data_hgg_qcd_samples,data_qcd_qcd_samples,data_qcd_h_samples],'samples log-likelihood distributions','_h_qcd_samp_dist',4)
+#plot_ll_dist([data_hgg_JetClass,data_hgg_h_samples,data_ttbar_top_samples,data_ttbar_JetClass,data_wqq_w_samples,data_wqq_JetClass,data_zqq_z_samples,data_zqq_JetClass,data_qcd_qcd_samples,data_qcd_JetClass],'JetClass log-likelihood distributions','_jetclass_dist',0)
+#plot_ll_dist([data_ttbar_top_samples,data_ttbar_qcd_samples,data_qcd_qcd_samples,data_qcd_top_samples],'samples log-likelihood distributions','_top_qcd_samp_dist',1)
+#plot_ll_dist([data_zqq_z_samples,data_zqq_qcd_samples,data_qcd_qcd_samples,data_qcd_z_samples],'samples log-likelihood distributions','_z_qcd_samp_dist',2)
+#plot_ll_dist([data_wqq_w_samples,data_wqq_qcd_samples,data_qcd_qcd_samples,data_qcd_w_samples],'samples log-likelihood distributions','_w_qcd_samp_dist',3)
+#plot_ll_dist([data_hgg_h_samples,data_hgg_qcd_samples,data_qcd_qcd_samples,data_qcd_h_samples],'samples log-likelihood distributions','_h_qcd_samp_dist',4)
 
 plot_llr_roc([s_top_qcd_top,s_top_qcd_qcd],['top','qcd'],'top_qcd',0)
 plot_llr_roc([s_zqq_qcd_z,s_zqq_qcd_qcd],['zqq','qcd'],'zqq_qcd',1)
