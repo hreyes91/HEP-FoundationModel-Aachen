@@ -586,7 +586,7 @@ if __name__ == "__main__":
         save_opt_states(
             optimizer=opt, scheduler=scheduler, scaler=scaler, log_dir=args.log_dir
         )
-        mean_loss=np.mean(loss_list)
+        mean_loss=np.mean(loss_list_here)
         mean_val=val_loss
         loss_list_epoch.append(mean_loss)
         val_list_epoch.append(mean_val)
@@ -594,8 +594,8 @@ if __name__ == "__main__":
     print(len(loss_list_epoch))
     #print(val_list_epoch)
     print(len(val_list_epoch))
-    
-    
+    print(loss_list_epoch) 
+
     history={'loss':loss_list_epoch,'val_loss':val_list_epoch}
     #print(history)    
     history_frame=pd.DataFrame(history)

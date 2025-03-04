@@ -150,8 +150,8 @@ num_heads_list=[4]
 num_layers_list=[8]
 num_cls_layers_list=[3]
 hidden_dim_list=[256]
-batch_size_list=[50]
-num_events_list=[1000,10000]
+batch_size_list=[100]
+num_events_list=[1000,10000,100000,1000000]
 num_const_list=[128]
 lr_list=[.001]
 
@@ -174,7 +174,7 @@ for sig in sig_list:
         for num_events in num_events_list:
 
             tag_of_train='top_vs_qcd_jetclass_classifier_attpool_test_pipeline_1_nevents'+str(num_events)
-            log_dir='//net/data_ttk/hreyes/JetClass/Classification_AttPool/top_vs_qcd/'+tag_of_train
+            log_dir='//net/data_ttk/hreyes/JetClass/Classification_AttPoolcombCLS/top_vs_qcd/'+tag_of_train
             for num_const in num_const_list:
                 for batch_size in batch_size_list:
                     for num_epochs in num_epochs_list:

@@ -2,7 +2,13 @@
 #!/bin/bash
 
 #Activate the Python environment
-source /home/home3/institut_thp/hreyes/anaconda3/envs/torch_env_pip/bin/activate 
+#source /home/home3/institut_thp/hreyes/anaconda3/envs/torch_env_pip/bin/activate 
+source /home/home3/institut_thp/hreyes/anaconda3/etc/profile.d/conda.sh
+
+# Activate your environment
+conda activate torch_env_pip
+
+
 
 #Run the Python script
-python train_classifier_bl_scan_onebinning.py
+python train_classifier_scan_onebinning.py

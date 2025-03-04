@@ -151,7 +151,7 @@ num_layers_list=[8]
 num_cls_layers_list=[3]
 hidden_dim_list=[256]
 batch_size_list=[50]
-num_events_list=[1000,10000]
+num_events_list=[1000]
 num_const_list=[128]
 lr_list=[.001]
 
@@ -173,7 +173,7 @@ for sig in sig_list:
 
         for num_events in num_events_list:
 
-            tag_of_train='top_vs_qcd_jetclass_classifier_bl_test_pipeline_3_nevents'+str(num_events)
+            tag_of_train='top_vs_qcd_jetclass_classifier_bl_test_pipeline_4_testhconfdor_nevents'+str(num_events)
             log_dir='//net/data_ttk/hreyes/JetClass/Classification_BL/top_vs_qcd/'+tag_of_train
             for num_const in num_const_list:
                 for batch_size in batch_size_list:

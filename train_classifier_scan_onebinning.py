@@ -25,17 +25,17 @@ main_dir_discrete='/net/data_ttk/hreyes/OneBin//'
 #list_of_jets=['TTBar','ZJetsToNuNu','HToBB','HToCC','HToGG','HToWW2Q1L','HToWW4Q','TTBarLep','WToQ','ZToQQ']
 sig_list=['TTBar_train___1Mfromeach_403030.h5']
 bg_list=['ZJetsToNuNu_train___1Mfromeach_403030.h5']
-num_epochs_list=[50]
+num_epochs_list=[3]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 hidden_dim_list=[128]
 batch_size_list=[50]
-num_events_list=[1000]
+num_events_list=[1000,100]
 num_const_list=[128]
 lr_list=[.001]
 
-tag_of_train='top_vs_qcd_jetclass_classifier_bl_meanpooling_test'
+tag_of_train='top_vs_qcd_jetclass_classifier_bl_meanpooling_test_htcondortest'
 log_dir='//net/data_ttk/hreyes/JetClass/Classification_BL/top_vs_qcd/'+tag_of_train
 
 for sig in sig_list:
