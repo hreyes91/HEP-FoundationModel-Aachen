@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from scipy import stats
-#plt.rcParams['text.usetex'] = True
+plt.rcParams['text.usetex'] = True
 
 def make_continues(jets, mask,pt_bins,eta_bins,phi_bins, noise=False):
 
@@ -55,32 +55,50 @@ def make_continues(jets, mask,pt_bins,eta_bins,phi_bins, noise=False):
 
     return continues_jets, ptj, mj
 
-def comp_topk_plots(mj_data,path_to_plots,data_name):
+def comp_topk_plots(mj_data,jets_data,path_to_plots,data_name,label):
+    mul_true=np.sum(jets_data[-1][:, :, 0] != 0, axis=1)
     n=len(mj_data)
-    label=['k=1000','k=2000','k=2500','k=3000','k=4000','k=5000','k=5500','k=6000','JetClass']
-    wd_list=np.empty(len(mj_data)-1)
+    wd_list=np.empty(shape=(len(mj_data)-1,2))
     colors = plt.cm.rainbow_r(np.linspace(0,1,n-1))
     bins = np.linspace(0, 700, 200)
-    fig,ax=plt.subplots(1,figsize=(8,5))
-    ax.set_xlabel('')
+    fig,ax=plt.subplots(2,1,figsize=(12,7))
+    ax[0].set_xlabel('')
     for i in range(n):
         mj=mj_data[i]
         mj=(mj[~np.isnan(mj)])
-        if i<n-1:
-            wd,ks=test_metrics(mj_data[-1],mj)
-            wd_list[i]=wd
-            label[i]+=', WS: '+str(round(wd,5))
-            ax.hist(mj,bins=bins,color=colors[i],histtype='step',density=True,log=True,label=label[i],alpha=0.65)
+        jets=jets_data[i]
+        mul=np.sum(jets[:, :, 0] != 0, axis=1)
+        up_lim=min(max(mul_true),max(mul))+0.5
+        low_lim=-0.5
+        n_bins=int(up_lim-low_lim+1)
+        mul_bins=np.linspace(low_lim,up_lim,n_bins)
+        if label[i]=='JetClass':
+            ax[0].hist(mj,bins=bins,color='black',histtype='step',density=True,log=True,alpha=0.65)
+            ax[1].hist(mul,bins=mul_bins,color='black',histtype='step',density=True,alpha=0.65,label=label[i])
+        elif label[i]=='k=5000, 10M':
+            wd_mj,ks_mj=test_metrics(mj_data[-1],mj)
+            wd_mul,ks_mul=test_metrics(mul_true,mul)
+            wd_list[i]=[wd_mj,wd_mul]
+            label[i]+=', WS $m_j$: '+str(round(wd_mj,3))+', mul: '+str(round(wd_mul,3))
+            ax[0].hist(mj,bins=bins,color='black',linestyle='dashed',histtype='step',density=True,log=True,alpha=0.65)
+            ax[1].hist(mul,bins=mul_bins,color='black',linestyle='dashed',histtype='step',density=True,alpha=0.65,label=label[i])
         else:
-            ax.hist(mj,bins=bins,color='black',histtype='step',density=True,log=True,label=label[i],alpha=0.65)
-    ax.grid()
-    ax.legend()
-    fig.suptitle(data_name)
-    plt.savefig(path_to_plots+'/hist_mj_topk_'+data_name+'.png')
+            wd_mj,ks_mj=test_metrics(mj_data[-1],mj)
+            wd_mul,ks_mul=test_metrics(mul_true,mul)
+            wd_list[i]=[wd_mj,wd_mul]
+            label[i]+=', WS $m_j$: '+str(round(wd_mj,3))+', mul: '+str(round(wd_mul,3))
+            ax[0].hist(mj,bins=bins,color=colors[i],histtype='step',density=True,log=True,alpha=0.65)
+            ax[1].hist(mul,bins=mul_bins,color=colors[i],histtype='step',density=True,alpha=0.65,label=label[i])
+    ax[0].grid()
+    ax[1].grid()
+    ax[1].legend()
+    ax[0].set_xlabel('$m_j$')
+    ax[1].set_xlabel('Multiplicity')
+    fig.suptitle('$m_j$-distribution for differnt $k$ values for '+str(data_name))
+    plt.savefig(path_to_plots+'/hist_mj_topk_'+data_name+'.jpeg')
     plt.close()
     print(wd_list)
-    print(min(wd_list))
-    return np.argmin(wd_list)
+    return np.argmin(wd_list,axis=0)
 
 
 def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,mj_true,path_to_plots):
