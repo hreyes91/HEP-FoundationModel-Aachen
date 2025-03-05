@@ -220,7 +220,40 @@ def LoadTrue(discrete_truedata_filename,n_samples,pt_bins,eta_bins,phi_bins):
 
     return jets_true,ptj_true,mj_true
 
+def LoadJetClass(filename):
+    tmp = pd.read_hdf(filename, key="raw", stop=None)
+    #print(tmp.shape) 
+    #tmp=tmp.sample(n_samples)
+    tmp = tmp.to_numpy()[:, :600].reshape(len(tmp), -1, 3)
 
+    tmp=tmp[:,:,:]
+
+    mask = tmp[:, :, 0] == -1
+
+    pt_con = tmp[:, :, 0]
+    eta_con = tmp[:, :, 1]
+    phi_con  = tmp[:, :, 2]
+
+    pt_con[mask] = 0.0
+    eta_con[mask] = 0.0
+    phi_con[mask] = 0.0
+    
+    pxs = np.cos(phi_con) * pt_con
+    pys = np.sin(phi_con) * pt_con
+    pzs = np.sinh(eta_con) * pt_con
+    es = (pxs ** 2 + pys ** 2 + pzs ** 2) ** (1. / 2)
+
+    pxj = np.sum(pxs, -1)
+    pyj = np.sum(pys, -1)
+    pzj = np.sum(pzs, -1)
+    ej = np.sum(es, -1)
+    
+    ptj = np.sqrt(pxj**2 + pyj**2)
+    mj = (ej ** 2 - pxj ** 2 - pyj ** 2 - pzj ** 2) ** (1. / 2)
+    
+    continues_jets = np.stack((pt_con, eta_con, phi_con), -1)
+
+    return continues_jets, ptj, mj
 
 def LoadSGenamples(filename,pt_bins,eta_bins,phi_bins,n_samples):
 
