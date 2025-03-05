@@ -56,12 +56,18 @@ def make_continues(jets, mask,pt_bins,eta_bins,phi_bins, noise=False):
     return continues_jets, ptj, mj
 
 def comp_topk_plots(mj_data,jets_data,path_to_plots,data_name,label):
-    mul_true=np.sum(jets_data[-1][:, :, 0] != 0, axis=1)
+    mj_true=mj_data[-2]
+    mul_true=np.sum(jets_data[-2][:, :, 0] != 0, axis=1)
+    mj_disc_true=mj_data[-1]
+    mul_disc_true=np.sum(jets_data[-1][:, :, 0] != 0, axis=1)
     n=len(mj_data)
-    wd_list=np.empty(shape=(len(mj_data)-1,2))
-    colors = plt.cm.rainbow_r(np.linspace(0,1,n-1))
+    wd_list=np.empty(shape=(len(mj_data)-1,4))
+    if data_name=='HToGG' or data_name=='ZToNuNu':
+        colors = plt.cm.rainbow_r(np.linspace(0,1,n-3))
+    else:
+        colors = plt.cm.rainbow_r(np.linspace(0,1,n-2))
     bins = np.linspace(0, 700, 200)
-    fig,ax=plt.subplots(2,1,figsize=(12,7))
+    fig,ax=plt.subplots(2,1,figsize=(12,10))
     ax[0].set_xlabel('')
     for i in range(n):
         mj=mj_data[i]
@@ -72,33 +78,41 @@ def comp_topk_plots(mj_data,jets_data,path_to_plots,data_name,label):
         low_lim=-0.5
         n_bins=int(up_lim-low_lim+1)
         mul_bins=np.linspace(low_lim,up_lim,n_bins)
-        if label[i]=='JetClass':
-            ax[0].hist(mj,bins=bins,color='black',histtype='step',density=True,log=True,alpha=0.65)
+        if label[i]=='JetClass training data':
+            ax[0].hist(mj,bins=bins,color='black',histtype='step',density=True,alpha=0.65,log=True)
             ax[1].hist(mul,bins=mul_bins,color='black',histtype='step',density=True,alpha=0.65,label=label[i])
-        elif label[i]=='k=5000, 10M':
-            wd_mj,ks_mj=test_metrics(mj_data[-1],mj)
-            wd_mul,ks_mul=test_metrics(mul_true,mul)
-            wd_list[i]=[wd_mj,wd_mul]
-            label[i]+=', WS $m_j$: '+str(round(wd_mj,3))+', mul: '+str(round(wd_mul,3))
-            ax[0].hist(mj,bins=bins,color='black',linestyle='dashed',histtype='step',density=True,log=True,alpha=0.65)
+        elif label[i]=='JetClass':
+            ax[0].hist(mj,bins=bins,color='black',linestyle='dashed',histtype='step',density=True,alpha=0.65,log=True)
             ax[1].hist(mul,bins=mul_bins,color='black',linestyle='dashed',histtype='step',density=True,alpha=0.65,label=label[i])
+        elif label[i]=='k=5000, 10M':
+            wd_mj_orig,ks_mj_orig=test_metrics(mj_true,mj)
+            wd_mul_orig,ks_mul_orig=test_metrics(mul_true,mul)
+            wd_mj_disc,ks_mj_disc=test_metrics(mj_disc_true,mj)
+            wd_mul_disc,ks_mul_disc=test_metrics(mul_disc_true,mul)
+            wd_list[i]=[wd_mj_orig,wd_mj_disc,wd_mul_orig,wd_mul_disc]
+            #label[i]+=', WS $m_j$:orig. '+str(round(wd_mj_orig,3))+', mul: '+str(round(wd_mul,3))
+            ax[0].hist(mj,bins=bins,color='black',linestyle='dotted',histtype='step',density=True,alpha=0.65,log=True,label=f'{label[i]}, WS $m_j$: orig. {str(round(wd_mj_orig,3))}, disc. {str(round(wd_mj_disc,3))}')
+            ax[1].hist(mul,bins=mul_bins,color='black',linestyle='dotted',histtype='step',density=True,alpha=0.65,label=f'{label[i]}, WS $m_j$: orig. {str(round(wd_mul_orig,3))}, disc. {str(round(wd_mul_disc,3))}')
         else:
-            wd_mj,ks_mj=test_metrics(mj_data[-1],mj)
-            wd_mul,ks_mul=test_metrics(mul_true,mul)
-            wd_list[i]=[wd_mj,wd_mul]
-            label[i]+=', WS $m_j$: '+str(round(wd_mj,3))+', mul: '+str(round(wd_mul,3))
-            ax[0].hist(mj,bins=bins,color=colors[i],histtype='step',density=True,log=True,alpha=0.65)
-            ax[1].hist(mul,bins=mul_bins,color=colors[i],histtype='step',density=True,alpha=0.65,label=label[i])
+            wd_mj_orig,ks_mj_orig=test_metrics(mj_true,mj)
+            wd_mul_orig,ks_mul_orig=test_metrics(mul_true,mul)
+            wd_mj_disc,ks_mj_disc=test_metrics(mj_disc_true,mj)
+            wd_mul_disc,ks_mul_disc=test_metrics(mul_disc_true,mul)
+            wd_list[i]=[wd_mj_orig,wd_mj_disc,wd_mul_orig,wd_mul_disc]
+            ax[0].hist(mj,bins=bins,color=colors[i],histtype='step',density=True,alpha=0.65,log=True,label=f'{label[i]}, WS $m_j$: orig. {str(round(wd_mj_orig,3))}, disc. {str(round(wd_mj_disc,3))}')
+            ax[1].hist(mul,bins=mul_bins,color=colors[i],histtype='step',density=True,alpha=0.65,label=f'{label[i]}, WS $m_j$: orig. {str(round(wd_mul_orig,3))}, disc. {str(round(wd_mul_disc,3))}')
     ax[0].grid()
     ax[1].grid()
+    ax[0].legend()
     ax[1].legend()
     ax[0].set_xlabel('$m_j$')
     ax[1].set_xlabel('Multiplicity')
-    fig.suptitle('$m_j$-distribution for differnt $k$ values for '+str(data_name))
-    plt.savefig(path_to_plots+'/hist_mj_topk_'+data_name+'.jpeg')
+    fig.suptitle(f'$m_j$-distribution for {data_name} with differnt $k$ values')
+    plt.savefig(path_to_plots+'/hist_mj_topk_'+data_name+'.png')
     plt.close()
     print(wd_list)
-    return np.argmin(wd_list,axis=0)
+    wd_min=np.argmin(wd_list,axis=0)
+    return wd_min[0], wd_min[1]
 
 
 def Make_Plots(jets,pt_bins,eta_bins,phi_bins,mj,jets_true,mj_true,path_to_plots):
