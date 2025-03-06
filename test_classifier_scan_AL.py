@@ -130,7 +130,7 @@ def TestResults(dict_auc,model_dir,r_tresh):
 
 main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
-
+num_const=100
 data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
 data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
 num_events_test=20000
@@ -140,7 +140,7 @@ dict_auc={'result':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 main_result_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_AL_freeze_finetune_test_2/'
 results_dirs=os.listdir(main_result_dir)
 
-    for result in results_dirs:
+for result in results_dirs:
         model_dir=main_result_dir+result
         test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
                                                     
