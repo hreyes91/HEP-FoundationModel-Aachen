@@ -77,7 +77,7 @@ class JetTransformerAL(Module):
         self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
       
         self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
-        #self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
         self.mlp2 = nn.Linear(128, 128)  # Hidden layer after pooling
         self.output = nn.Linear(128, 1)  # Binary classification
         
@@ -103,19 +103,22 @@ class JetTransformerAL(Module):
 
         # MLP processing
         x = self.mlp1(combined_repr)
-        x = torch.relu(x)
+        x = torch.nn.Dropout(p=0.1)(x)
+        x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
         #x = self.dropout_layer(x)
 
         # Average Pooling (across jet constituents)
         #x = x.unsqueeze(1)  # Add a dummy dimension for pooling
-        #x = self.avg_pool(x)  # Perform average pooling
-        #x = x.squeeze(1)  # Remove the dummy dimension
+        x = self.avg_pool(x)
+        print(x) # Perform average pooling
+        x = x.squeeze(-1)  # Remove the dummy dimension
         
         # Second MLP layer after pooling
         x = self.mlp2(x)
-        x = torch.relu(x)
+        x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
+        x = torch.nn.Dropout(p=0.1)(x)
         x = self.output(x)
-
+        x = torch.sigmoid(x)
         return x
 
     def _process_jet(self, jet_data, padding_mask):
