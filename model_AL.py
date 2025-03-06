@@ -114,7 +114,7 @@ class JetTransformerAL(Module):
         print(x.shape)
         x = self.avg_pool(x)
          # Perform average pooling
-        #x = x.squeeze(-1)  # Remove the dummy dimension
+        x = x.squeeze(-1)  # Remove the dummy dimension
         print('x after pooling')
         print(x)
         print(x.shape)
