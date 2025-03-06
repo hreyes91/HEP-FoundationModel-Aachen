@@ -245,7 +245,9 @@ def plot_rocs(model, val_loader, tag):
             logits = model(
                                 jet1, jet2, padding_mask1, padding_mask2
                 )
-                
+            print('this is the label, input of loss')
+            print(label.view(-1, 1).float())
+            
             loss = model.loss(logits, label.view(-1, 1).float())
 
 
