@@ -109,14 +109,19 @@ class JetTransformerAL(Module):
 
         # Average Pooling (across jet constituents)
         #x = x.unsqueeze(1)  # Add a dummy dimension for pooling
+        print('shape before pooling')
+        print(x)
         x = self.avg_pool(x)
-        print(x) # Perform average pooling
+         # Perform average pooling
         x = x.squeeze(-1)  # Remove the dummy dimension
         
         # Second MLP layer after pooling
         x = self.mlp2(x)
         x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
         x = torch.nn.Dropout(p=0.1)(x)
+        print('x after pooling')
+        print(x)
+        print(x.shape)
         x = self.output(x)
         x = torch.sigmoid(x)
         return x
