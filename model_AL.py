@@ -125,7 +125,7 @@ class JetTransformerAL(Module):
         print('x after mpl2')
         print(x)
         print(x.shape)
-        x=torch.nn.Flatten()(x)
+        #x=torch.nn.Flatten()(x)
         x = self.output(x)
         print('x after output')
         print(x)
