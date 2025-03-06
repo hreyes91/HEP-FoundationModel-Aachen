@@ -170,6 +170,10 @@ class JetTransformerAL(Module):
         """
         Computes the loss for the given logits and ground truth binary labels.
         """
+        
+        print('true bine')
+        
+        print(true_bin)
         return self.criterion(logits, true_bin)
 
 
@@ -251,9 +255,7 @@ class JetTransformerClassifier(Module):
         return out
 
     def loss(self, logits, true_bin):
-        print('true bine')
-        
-        print(true_bin)
+
         loss = self.criterion(logits, true_bin)
         return loss
 
