@@ -174,7 +174,7 @@ class JetTransformerAL(Module):
         print('true bine')
         
         print(true_bin)
-        print(true_bin.shape())
+        print(true_bin.shape)
         return self.criterion(logits, true_bin)
 
 
