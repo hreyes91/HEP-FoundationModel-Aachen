@@ -92,6 +92,8 @@ def Accuracy(predictions,labels):
     
     return acc
 
+
+
 def TestMetrics(predictions,r_tresh):
 
     
@@ -105,7 +107,7 @@ def TestMetrics(predictions,r_tresh):
     auc_score=roc_auc_score(labels, predictions)
     
     
-    r_tresh=.5
+    r_tresh=r_tresh
     r_val=ComputeR(tpr,fpr,r_tresh)
     
     
@@ -148,7 +150,7 @@ bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 #test_data
 data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
 data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
-num_events_test=100000
+num_events_test=20000
 r_tresh=.3
 dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
@@ -159,7 +161,7 @@ dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 hidden_dim_list=[256]
-batch_size_list=[100]
+batch_size_list=[64]
 num_events_list=[1000000]
 num_const_list=[100]
 lr_list=[.001]
