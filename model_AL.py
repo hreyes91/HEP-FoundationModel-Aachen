@@ -109,9 +109,9 @@ class JetTransformerAL(Module):
 
         # Average Pooling (across jet constituents)
         #x = x.unsqueeze(1)  # Add a dummy dimension for pooling
-        print('x before pooling')
-        print(x)
-        print(x.shape)
+        #print('x before pooling')
+        #print(x)
+        #print(x.shape)
         x = self.avg_pool(x)
          # Perform average pooling
         #x = x.squeeze(-1)  # Remove the dummy dimension
