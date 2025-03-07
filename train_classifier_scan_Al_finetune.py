@@ -194,7 +194,7 @@ for sig in sig_list:
                                                 
                                                 
                                                     name_sufix=random_string()
-                                                    train_command='python train_classifier_AL_1.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
+                                                    train_command='python train_classifier_AL_2.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
                                                     os.system(train_command)
                                                     
                                                     
