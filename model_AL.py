@@ -115,22 +115,22 @@ class JetTransformerAL(Module):
         x = self.avg_pool(x)
          # Perform average pooling
         #x = x.squeeze(-1)  # Remove the dummy dimension
-        print('x after pooling')
-        print(x)
-        print(x.shape)
+        #print('x after pooling')
+        #print(x)
+        #print(x.shape)
         # Second MLP layer after pooling
         x = self.mlp2(x)
         x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
         x = torch.nn.Dropout(p=0.1)(x)
-        print('x after mpl2')
-        print(x)
-        print(x.shape)
+        #print('x after mpl2')
+        #print(x)
+        #print(x.shape)
         #x=torch.nn.Flatten()(x)
         x = self.output(x)
-        print('x after output')
-        print(x)
-        print(x.shape)
-        x = torch.sigmoid(x)
+        #print('x after output')
+        #print(x)
+        #print(x.shape)
+        #x = torch.sigmoid(x)
         return x
 
     def _process_jet(self, jet_data, padding_mask):
@@ -171,10 +171,10 @@ class JetTransformerAL(Module):
         Computes the loss for the given logits and ground truth binary labels.
         """
         
-        print('true bine')
+        #print('true bine')
         
-        print(true_bin)
-        print(true_bin.shape)
+        #print(true_bin)
+        #print(true_bin.shape)
         return self.criterion(logits, true_bin)
 
 
