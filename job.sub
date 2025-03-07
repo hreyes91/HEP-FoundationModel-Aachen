@@ -10,6 +10,6 @@ error = sleep.err
 request_GPUs=1
 initialdir=/home/home3/institut_thp/hreyes/Transformers/FoundationModels/HEP-FoundationModel-Aachen
 
-#requirements = (Machine == "lx3bgpu1.physik.rwth-aachen.de")
+requirements = (Machine == "lx3agpu1.physik.rwth-aachen.de")
 
 queue
