@@ -566,9 +566,16 @@ if __name__ == "__main__":
         with torch.no_grad():
             val_loss = []
             val_perplexity = []
-            for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
+            #for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
+            #    val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=False
+            #):
+            
+            progress_bar =tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=False
-            ):
+            )
+            for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(train_loader):
+            
+            
                 jet1 = jet1.to(device)
                 padding_mask1 = padding_mask1.to(device)
             
@@ -589,6 +596,9 @@ if __name__ == "__main__":
                 min_val_loss = val_loss
                 save_model(model, args.log_dir, "best")
             logger.add_scalar("Val/Loss", np.mean(val_loss), global_step)
+        
+            if batch_idx % 100 == 0:  # Update every 10 batches (adjust as needed)
+                progress_bar.update(100)
         
         save_model(model, args.log_dir, "last")
         save_opt_states(
