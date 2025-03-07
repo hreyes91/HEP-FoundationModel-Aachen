@@ -529,7 +529,7 @@ if __name__ == "__main__":
         progress_bar =tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}",leave=False
         )
-        for batch_idx, (padding_mask1, jet2, padding_mask2, label) in enumerate(train_loader):
+        for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(train_loader):
         
             opt.zero_grad()
             jet1 = jet1.to(device)
