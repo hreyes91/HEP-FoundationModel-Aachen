@@ -129,7 +129,7 @@ class JetTransformerAL(Module):
             x = self.output(x)
         
         
-        if pooling=='att'
+     
         
         #print('x after output')
         #print(x)
