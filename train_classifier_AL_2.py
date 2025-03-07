@@ -561,7 +561,7 @@ if __name__ == "__main__":
 
             global_step += 1
             if batch_idx % 1000 == 0:  # Update every 10 batches (adjust as needed)
-            progress_bar.update(1000)
+                progress_bar.update(1000)
         model.eval()
         with torch.no_grad():
             val_loss = []
