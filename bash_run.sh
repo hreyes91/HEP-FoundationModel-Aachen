@@ -11,4 +11,4 @@ conda activate torch_env_pip
 
 
 #Run the Python script
-python train_classifier_scan_onebinning.py
+python train_classifier_scan_Al_finetune.py
