@@ -523,7 +523,7 @@ if __name__ == "__main__":
         model.train()
         loss_list_here=[]
         for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
-            train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}"
+            train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}",leave=False
         ):
             opt.zero_grad()
             jet1 = jet1.to(device)
@@ -560,7 +560,7 @@ if __name__ == "__main__":
             val_loss = []
             val_perplexity = []
             for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
-                val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}"
+                val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=False
             ):
                 jet1 = jet1.to(device)
                 padding_mask1 = padding_mask1.to(device)
