@@ -436,7 +436,7 @@ if __name__ == "__main__":
 
     
     
-    
+    '''
     # Freeze the backbone (original_model)
     # Freeze feature embeddings
     for param in model.feature_embeddings.parameters():
@@ -453,6 +453,7 @@ if __name__ == "__main__":
     for param in model.dropout_layer.parameters():
         param.requires_grad = False
  
+    '''
   
     ###I get the state dict, filtered, i.e. the last layer of the backbone is taken out and I get what I need
     path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
@@ -482,7 +483,7 @@ if __name__ == "__main__":
     opt.load_state_dict(merged_opt_state_dict)
     
     #freezed backbone
-    opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay)
+    #opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay)
 
 
     #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
@@ -527,8 +528,7 @@ if __name__ == "__main__":
         #    train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}",leave=False
         #):
         progress_bar =tqdm(
-            train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}",leave=False
-        )
+            train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}",leave=True)
         for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(train_loader):
         
             opt.zero_grad()
@@ -571,7 +571,7 @@ if __name__ == "__main__":
             #):
             
             progress_bar =tqdm(
-                val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=False
+                val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=True
             )
             for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(train_loader):
             
