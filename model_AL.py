@@ -84,7 +84,7 @@ class JetTransformerAL(Module):
         # Criterion for binary classification
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
-    def forward(self, jet1,padding_mask1, jet2, padding_mask2):
+    def forward(self, jet1, jet2, padding_mask1, padding_mask2):
         """
         Forward pass where jet1 and jet2 are processed separately and their representations are concatenated.
         """
