@@ -97,36 +97,40 @@ class JetTransformerAL(Module):
         jet1_repr = self.jet_mlp(jet1_repr)  # (batch, 64)
         jet2_repr = self.jet_mlp(jet2_repr)  # (batch, 64)
 
-
+        pooling='avg'
         # Concatenate the representations of jet1 and jet2
         combined_repr = torch.cat([jet1_repr, jet2_repr], dim=-1)  # Shape: [batch_size, hidden_dim * 2]
+        if pooling=='avg':
+            # MLP processing
+            x = self.mlp1(combined_repr)
+            x = torch.nn.Dropout(p=0.1)(x)
+            x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
+            #x = self.dropout_layer(x)
 
-        # MLP processing
-        x = self.mlp1(combined_repr)
-        x = torch.nn.Dropout(p=0.1)(x)
-        x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
-        #x = self.dropout_layer(x)
-
-        # Average Pooling (across jet constituents)
-        #x = x.unsqueeze(1)  # Add a dummy dimension for pooling
-        #print('x before pooling')
-        #print(x)
-        #print(x.shape)
-        x = self.avg_pool(x)
-         # Perform average pooling
-        #x = x.squeeze(-1)  # Remove the dummy dimension
-        #print('x after pooling')
-        #print(x)
-        #print(x.shape)
-        # Second MLP layer after pooling
-        x = self.mlp2(x)
-        x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
-        x = torch.nn.Dropout(p=0.1)(x)
-        #print('x after mpl2')
-        #print(x)
-        #print(x.shape)
-        #x=torch.nn.Flatten()(x)
-        x = self.output(x)
+            # Average Pooling (across jet constituents)
+            #x = x.unsqueeze(1)  # Add a dummy dimension for pooling
+            #print('x before pooling')
+            #print(x)
+            #print(x.shape)
+            x = self.avg_pool(x)
+             # Perform average pooling
+            #x = x.squeeze(-1)  # Remove the dummy dimension
+            #print('x after pooling')
+            #print(x)
+            #print(x.shape)
+            # Second MLP layer after pooling
+            x = self.mlp2(x)
+            x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
+            x = torch.nn.Dropout(p=0.1)(x)
+            #print('x after mpl2')
+            #print(x)
+            #print(x.shape)
+            #x=torch.nn.Flatten()(x)
+            x = self.output(x)
+        
+        
+        if pooling=='att'
+        
         #print('x after output')
         #print(x)
         #print(x.shape)

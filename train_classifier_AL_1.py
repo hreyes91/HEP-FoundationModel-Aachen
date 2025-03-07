@@ -245,8 +245,7 @@ def plot_rocs(model, val_loader, tag):
             logits = model(
                                 jet1, jet2, padding_mask1, padding_mask2
                 )
-            print('this is the label, input of loss')
-            print(label.view(-1, 1).float())
+      
             
             loss = model.loss(logits, label.view(-1, 1).float())
 
@@ -437,7 +436,7 @@ if __name__ == "__main__":
 
     
     
-    
+    '''
     # Freeze the backbone (original_model)
     # Freeze feature embeddings
     for param in model.feature_embeddings.parameters():
@@ -453,7 +452,7 @@ if __name__ == "__main__":
 
     for param in model.dropout_layer.parameters():
         param.requires_grad = False
-
+    '''
   
     ###I get the state dict, filtered, i.e. the last layer of the backbone is taken out and I get what I need
     path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
@@ -482,9 +481,8 @@ if __name__ == "__main__":
     # Load the updated state dict into the optimizer
     opt.load_state_dict(merged_opt_state_dict)
     
-    #freezed backbone
-    opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay
-    )
+    ##freezed backbone
+    #opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay)
 
     #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
     print('model paramaters')
