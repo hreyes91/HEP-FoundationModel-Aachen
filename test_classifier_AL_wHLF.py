@@ -158,7 +158,7 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     padding_mask1 = torch.tensor(padding_mask1, dtype=torch.bool)
     padding_mask2 = torch.tensor(padding_mask2, dtype=torch.bool)
     label = torch.tensor(label, dtype=torch.float32)  # For BCEWithLogitsLoss, labels should be float32
-    jet_coords = torch.tensor(jet_coords, dtype=torch.bool)
+    jet_coords = torch.tensor(jet_coords, dtype=torch.float32)
     
     test_set = TensorDataset(
         jet1[: ],
