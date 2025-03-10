@@ -594,7 +594,7 @@ if __name__ == "__main__":
                 jet2 = jet2.to(device)
                 padding_mask2 = padding_mask2.to(device)
             
-            
+                hlf=hlf.to(device)
                 label = label.to(device)
 
                 logits = model(
