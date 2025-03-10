@@ -221,7 +221,7 @@ class JetTransformerALwHLF(Module):
         self.hlf_transformer = TransformerEncoder(transformer_layer, num_layers=num_layers_hlf)
         
         
-        self.hlf_mlp2 = nn.Linear(hidden_dim, hidden_dim)  # Final MLP
+        self.hlf_mlp2 = nn.Linear(hidden_dim_hlf, 64)  # Final MLP
  
  
         # Classification head with MLP and Average Pooling
