@@ -6,6 +6,7 @@ from torch.nn import (
     Embedding,
     Linear,
     TransformerEncoderLayer,
+    TransformerEncoder,
     CrossEntropyLoss,
     LayerNorm,
     Dropout,
