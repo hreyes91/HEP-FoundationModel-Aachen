@@ -197,7 +197,7 @@ class JetTransformerALwHLF(Module):
         num_layers_hlf=4,
         hidden_dim_hlf=128
     ):
-        super(JetTransformerALwHL, self).__init__()
+        super(JetTransformerALwHLF, self).__init__()
         self.num_features = num_features
         self.dropout = dropout
         self.num_const = num_const
