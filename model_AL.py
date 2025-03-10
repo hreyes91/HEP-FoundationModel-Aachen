@@ -182,6 +182,7 @@ class JetTransformerAL(Module):
         #print(true_bin.shape)
         return self.criterion(logits, true_bin)
 
+##################################################################################
 
 class JetTransformerALwHLF(Module):
     def __init__(
@@ -346,6 +347,197 @@ class JetTransformerALwHLF(Module):
         #print(true_bin)
         #print(true_bin.shape)
         return self.criterion(logits, true_bin)
+
+
+
+
+
+
+##################################################################################
+
+class JetTransformerALwHLFScratch(Module):
+    def __init__(
+        self,
+        original_model,
+        hidden_dim=256,
+        num_layers=8,
+        num_heads=4,
+        num_features=3,
+        num_bins=(41, 31, 31),
+        dropout=0.1,
+        num_const=100,
+        hlf_dim=(2,5),
+        num_layers_hlf=4,
+        hidden_dim_hlf=128
+    ):
+        super(JetTransformerALwHLFScratch, self).__init__()
+        self.num_features = num_features
+        self.dropout = dropout
+        self.num_const = num_const
+
+        # learn embedding for each bin of each feature dim
+        self.feature_embeddings = ModuleList(
+            [
+                Embedding(embedding_dim=hidden_dim, num_embeddings=num_bins[l])
+                for l in range(num_features)
+            ]
+        )
+
+        # build transformer layers
+        self.layers = ModuleList(
+            [
+                TransformerEncoderLayer(
+                    d_model=hidden_dim,
+                    nhead=num_heads,
+                    dim_feedforward=hidden_dim,
+                    batch_first=True,
+                    norm_first=True,
+                    dropout=dropout,
+                )
+                for l in range(num_layers)
+            ]
+        )
+
+        self.out_norm = LayerNorm(hidden_dim)
+        self.dropout = Dropout(dropout)
+
+ 
+        #HLF layers
+        #self.hlf_mlp1 = nn.Linear(hlf_dim, hidden_dim)  # First MLP layer
+        
+        self.hlf_mlp1 = nn.Linear(10, hidden_dim_hlf)
+        # build transformer layers
+        transformer_layer = TransformerEncoderLayer(d_model=hidden_dim_hlf, nhead=2)
+        self.hlf_transformer = TransformerEncoder(transformer_layer, num_layers=num_layers_hlf)
+        
+        
+        self.hlf_mlp2 = nn.Linear(hidden_dim_hlf, 64)  # Final MLP
+ 
+ 
+        # Classification head with MLP and Average Pooling
+
+        # Classification head with MLP and Average Pooling
+        self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
+      
+        self.mlp1 = nn.Linear(64 * 3, 128)  # After concatenating both jet representations
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
+        self.mlp2 = nn.Linear(1, 128)  # Hidden layer after pooling
+        self.output = nn.Linear(128, 1)  # Binary classification
+        
+        # Criterion for binary classification
+        self.criterion = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self, jet1, jet2, padding_mask1, padding_mask2,hlf):
+        """
+        Forward pass where jet1 and jet2 are processed separately and their representations are concatenated.
+        """
+
+        # Apply feature embeddings and transformer processing separately for each jet
+        jet1_repr = self._process_jet(jet1, padding_mask1)  # Process jet1
+        jet2_repr = self._process_jet(jet2, padding_mask2)  # Process jet2
+
+
+        jet1_repr = self.jet_mlp(jet1_repr)  # (batch, 64)
+        jet2_repr = self.jet_mlp(jet2_repr)  # (batch, 64)
+
+
+
+        #####HLF stage
+        hlf = hlf.view(hlf.shape[0], -1)
+        #print(hlf)
+        #print(hlf.shape)
+        hlf=self.hlf_mlp1(hlf)
+        hlf = torch.nn.LeakyReLU(negative_slope=0.01)(hlf)
+        hlf = self.hlf_transformer(hlf) # Transformer
+        hlf = self.hlf_mlp2(hlf)
+        hlf_repr = torch.nn.LeakyReLU(negative_slope=0.01)(hlf)
+
+
+        pooling='avg'
+        # Concatenate the representations of jet1 and jet2
+        combined_repr = torch.cat([jet1_repr, jet2_repr,hlf_repr], dim=-1)  # Shape: [batch_size, hidden_dim * 2]
+        if pooling=='avg':
+            # MLP processing
+            x = self.mlp1(combined_repr)
+            x = torch.nn.Dropout(p=0.1)(x)
+            x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
+            #x = self.dropout_layer(x)
+
+            # Average Pooling (across jet constituents)
+            #x = x.unsqueeze(1)  # Add a dummy dimension for pooling
+            #print('x before pooling')
+            #print(x)
+            #print(x.shape)
+            x = self.avg_pool(x)
+             # Perform average pooling
+            #x = x.squeeze(-1)  # Remove the dummy dimension
+            #print('x after pooling')
+            #print(x)
+            #print(x.shape)
+            # Second MLP layer after pooling
+            x = self.mlp2(x)
+            x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
+            x = torch.nn.Dropout(p=0.1)(x)
+            #print('x after mpl2')
+            #print(x)
+            #print(x.shape)
+            #x=torch.nn.Flatten()(x)
+            x = self.output(x)
+        
+        
+     
+        
+        #print('x after output')
+        #print(x)
+        #print(x.shape)
+        #x = torch.sigmoid(x)
+        return x
+
+    def _process_jet(self, jet_data, padding_mask):
+        """
+        Processes a single jet (either jet1 or jet2).
+        Applies feature embeddings, transformer layers, and normalization.
+        """
+        batch_size, num_const, num_features = jet_data.shape  # (batch, n_const, n_features)
+        jet_data[jet_data < 0] = 0  # Handle negative values
+
+        # Apply feature embeddings for each feature dimension
+        emb = self.feature_embeddings[0](jet_data[:, :, 0])  # Embedding the first feature
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](jet_data[:, :, i])  # Sum embeddings across features
+        
+        # Construct causal mask to restrict attention to preceding elements
+        seq_len = jet_data.shape[1]
+        seq_idx = torch.arange(seq_len, dtype=torch.long, device=jet_data.device)
+        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)  # Causal mask
+        padding_mask = ~padding_mask  # Invert padding mask for transformer layers
+
+        #exit()
+        # Apply transformer layers
+        for layer in self.layers:
+            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+
+        # Normalize and apply dropout
+        emb = self.out_norm(emb)
+        emb = self.dropout_layer(emb)
+
+        # Take the representation of the [CLS] token or apply pooling if needed
+        jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
+        
+        return jet_repr
+
+    def loss(self, logits, true_bin):
+        """
+        Computes the loss for the given logits and ground truth binary labels.
+        """
+        
+        #print('true bine')
+        
+        #print(true_bin)
+        #print(true_bin.shape)
+        return self.criterion(logits, true_bin)
+
+
 
 
 
