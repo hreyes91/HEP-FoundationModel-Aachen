@@ -4,7 +4,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from argparse import ArgumentParser
 import h5py
-from model_AL import JetTransformerAL
+from model_AL import JetTransformerALwHLF
 
 
 
