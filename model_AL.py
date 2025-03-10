@@ -253,7 +253,7 @@ class JetTransformerALwHLF(Module):
 
 
         #####HLF stage
-        hlf=torch.nn.Flatten()(hlf)
+        hlf = hlf.view(hlf.shape[0], -1)
         print(hlf)
         print(hlf.shape)
         self.hlf_mlp1(hlf)
