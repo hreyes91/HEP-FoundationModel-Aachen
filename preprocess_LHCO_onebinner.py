@@ -165,7 +165,7 @@ def discretize_data(
         
         jet1=f.get('jet_1_feat')[:,:,0:3]
         jet2=f.get('jet_2_feat')[:,:,0:3]
-        print(jet1)
+       
         
         #jet1=f.get('jet_1_4m').astype(np.float64)[:,:,0:4]
      
@@ -173,10 +173,11 @@ def discretize_data(
         #jet2=f.get('jet_2_4m').astype(np.float64)[:,:,0:4]
         
         
-        
+        jet_coords=f.get('jet_coords')[:,:,:]
      
-        
-        return jet1,jet2
+        print(jet_coords)
+       
+        return jet1,jet2,jet_coords
 
     def rearrange_jet_data(jet_data):
         """Rearrange jet data from [eta, phi, log(pt)] to [log(pt), eta, phi]."""
@@ -284,8 +285,8 @@ def discretize_data(
        
         const_pt_disc = np.digitize(np.log(const_pt), pt_bins).astype(np.int16)
         
-        print('const_pt_disc')
-        print(const_pt_disc)
+        #print('const_pt_disc')
+        #print(const_pt_disc)
       
         d_eta_disc = np.digitize(d_eta, eta_bins).astype(np.int16)
         d_phi_disc = np.digitize(d_phi, phi_bins).astype(np.int16)
@@ -309,7 +310,11 @@ def discretize_data(
 
     print(f"Input: {input_file}\nOutput: {output_file}")
 
-    jet1,jet2 = read_input()
+    jet1,jet2,jet_coords = read_input()
+    
+    hf=h5py.File(output_file, "w")
+    hf.create_dataset("jet_coords", data=jet_coords)
+    
     print('got jets')
     #data=[data1,data2]
     jet1=rearrange_jet_data(jet1[:,:,:3])
@@ -321,7 +326,7 @@ def discretize_data(
     print(f"Data shape: {jet1.shape}\n")
     #const_pt, d_eta, d_phi = calculate_features(jet2)
     const_pt, d_eta, d_phi = Get_features(jet1)
-    check_pt_oredering(const_pt)
+    #check_pt_oredering(const_pt)
 
 
 
@@ -331,6 +336,7 @@ def discretize_data(
 
 
 
+    
     print(f"\npT bin range: {const_pt_disc[const_pt!=0].min()} {const_pt_disc.max()}")
     print(f"eta bin range: {d_eta_disc[const_pt!=0].min()} {d_eta_disc.max()}")
     print(f"phi bin range: {d_phi_disc[const_pt!=0].min()} {d_phi_disc.max()}\n")
@@ -339,16 +345,21 @@ def discretize_data(
     #raw = get_df(const_pt, d_eta, d_phi)
    
     disc1 = get_df(const_pt_disc, d_eta_disc, d_phi_disc)
-    disc1.to_hdf(output_file, key="discretized_jet1", mode="w", complevel=9)
+    disc1.to_hdf(output_file, key="discretized_jet1", mode="r+", complevel=9)
     
     #####jet 2
     #const_pt, d_eta, d_phi = calculate_features(jet1)
     const_pt, d_eta, d_phi = Get_features(jet2)
-    check_pt_oredering(const_pt)
+    #check_pt_oredering(const_pt)
+
+
+
 
     pt_bins, eta_bins, phi_bins = get_binning()
     const_pt_disc, d_eta_disc, d_phi_disc = discretize(const_pt, d_eta, d_phi,pt_bins, eta_bins, phi_bins)
 
+
+    
     print(f"\npT bin range: {const_pt_disc[const_pt!=0].min()} {const_pt_disc.max()}")
     print(f"eta bin range: {d_eta_disc[const_pt!=0].min()} {d_eta_disc.max()}")
     print(f"phi bin range: {d_phi_disc[const_pt!=0].min()} {d_phi_disc.max()}\n")
@@ -362,6 +373,8 @@ def discretize_data(
         #raw.to_hdf(output_file, key="raw", mode="w", complevel=9)
     
     disc2.to_hdf(output_file, key="discretized_jet2", mode="r+", complevel=9)
+    
+   
 
     print("\nDiscretized dataframe description")
     print(disc2.describe())
@@ -382,9 +395,9 @@ if __name__ == "__main__":
 
     file_name=args.input_file.split('/')[-1]
     output_file='LHCO_discrete/discrete_1Mfromeach_403030_'+file_name
-    print('HELLO')
-    print(output_file)
-    print(args.input_file)
+    #print('HELLO')
+    #print(output_file)
+    #print(args.input_file)
     discretize_data(
   
         tag=args.tag,

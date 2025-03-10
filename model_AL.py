@@ -181,7 +181,7 @@ class JetTransformerAL(Module):
         #print(true_bin.shape)
         return self.criterion(logits, true_bin)
 
-'''
+
 class JetTransformerALwHLF(Module):
     def __init__(
         self,
@@ -235,7 +235,7 @@ class JetTransformerALwHLF(Module):
         # Criterion for binary classification
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
-    def forward(self, jet1, jet2,hlf, padding_mask1, padding_mask2):
+    def forward(self, jet1, jet2, padding_mask1, padding_mask2,hlf):
         """
         Forward pass where jet1 and jet2 are processed separately and their representations are concatenated.
         """
@@ -341,7 +341,7 @@ class JetTransformerALwHLF(Module):
         #print(true_bin.shape)
         return self.criterion(logits, true_bin)
 
-'''
+
 
 ###################################################################################################################################################################
 
