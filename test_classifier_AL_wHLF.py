@@ -108,7 +108,7 @@ def load_data(file):
     jet2[jet2 == -1] = 0
     
     f=h5py.File(file, 'r')
-    jet_coords=f.get('jet_coords')[:,:,:]
+    jet_coords=f.get('jet_coords')[:args.num_events,:,:]
     
     return jet1,jet2,jet_coords
 
