@@ -399,7 +399,7 @@ class JetTransformerALwHLFScratch(Module):
         )
 
         self.out_norm = LayerNorm(hidden_dim)
-        self.dropout = Dropout(dropout)
+        self.dropout_layer = Dropout(dropout)
 
  
         #HLF layers
