@@ -156,12 +156,12 @@ dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[2]
+num_epochs_list=[1]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 hidden_dim_list=[256]
-batch_size_list=[64]
+batch_size_list=[128]
 num_events_list=[1000000]
 num_const_list=[100]
 lr_list=[.001]
