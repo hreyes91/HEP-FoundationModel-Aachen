@@ -256,7 +256,7 @@ class JetTransformerALwHLF(Module):
         hlf = hlf.view(hlf.shape[0], -1)
         print(hlf)
         print(hlf.shape)
-        self.hlf_mlp1(hlf)
+        hlf=self.hlf_mlp1(hlf)
         hlf = torch.nn.LeakyReLU(negative_slope=0.01)(hlf)
         hlf = self.hlf_transformer(hlf) # Transformer
         hlf = self.hlf_mlp2(hlf)
