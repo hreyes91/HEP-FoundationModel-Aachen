@@ -212,8 +212,9 @@ class JetTransformerALwHLF(Module):
 
  
         #HLF layers
-        self.hlf_mlp1 = nn.Linear(hlf_dim, hidden_dim)  # First MLP layer
+        #self.hlf_mlp1 = nn.Linear(hlf_dim, hidden_dim)  # First MLP layer
         
+        self.hlf_mlp1 = nn.Linear(10, hidden_dim)
         # build transformer layers
         transformer_layer = TransformerEncoderLayer(d_model=hidden_dim_hlf, nhead=2)
         self.hlf_transformer = TransformerEncoder(transformer_layer, num_layers=num_layers_hlf)
@@ -251,7 +252,7 @@ class JetTransformerALwHLF(Module):
 
 
         #####HLF stage
-        
+        hlf=torch.nn.Flatten(hlf)
         hlf = F.leaky_relu(self.hlf_mlp1(hlf))
         hlf = self.hlf_transformer(hlf) # Transformer
         hlf_repr = F.leaky_relu(self.hlf_mlp2(hlf))
