@@ -256,7 +256,8 @@ class JetTransformerALwHLF(Module):
         hlf=torch.nn.Flatten()(hlf)
         print(hlf)
         print(hlf.shape)
-        hlf = F.leaky_relu(self.hlf_mlp1(hlf))
+        self.hlf_mlp1(hlf)
+        hlf = F.leaky_relu()(hlf)
         hlf = self.hlf_transformer(hlf) # Transformer
         hlf_repr = F.leaky_relu(self.hlf_mlp2(hlf))
 
