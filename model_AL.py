@@ -257,9 +257,10 @@ class JetTransformerALwHLF(Module):
         print(hlf)
         print(hlf.shape)
         self.hlf_mlp1(hlf)
-        hlf = F.leaky_relu()(hlf)
+        hlf = torch.nn.LeakyReLU(negative_slope=0.01)(hlf)
         hlf = self.hlf_transformer(hlf) # Transformer
-        hlf_repr = F.leaky_relu(self.hlf_mlp2(hlf))
+        hlf = self.hlf_mlp2(hlf)
+        hlf_repr = torch.nn.LeakyReLU(negative_slope=0.01)(hlf)
 
 
         pooling='avg'
