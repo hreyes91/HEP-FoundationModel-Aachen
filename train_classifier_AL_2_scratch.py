@@ -416,7 +416,7 @@ if __name__ == "__main__":
     
     
     # construct model
-    model = JetTransformerAL(original_model,
+    model = JetTransformerALScratch(original_model,
         hidden_dim=args.hidden_dim,
 
         num_layers=args.num_layers,
