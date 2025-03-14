@@ -143,9 +143,9 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
+sig_list=['discrete_1Mfromeach_403030_sn-N100-SR-Train.h5']
 
-bg_list=['discrete_1Mfromeach_403030_sn-N100-SR-Train.h5']
+bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 
 #test_data
 data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
