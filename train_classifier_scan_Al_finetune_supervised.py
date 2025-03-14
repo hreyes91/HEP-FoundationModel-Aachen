@@ -156,7 +156,7 @@ dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[1]
+num_epochs_list=[60]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
