@@ -156,7 +156,7 @@ dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[1]
+num_epochs_list=[20]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
@@ -168,7 +168,7 @@ lr_list=[.001]
 #num_events_val_max=500000
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_ALsupervised_finetune_AVGpoolhead_test_datav2_1/'+tag_of_train
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_ALsupervised_finetune_AVGpoolhead_test_datav2_2/'+tag_of_train
 model_name='model_best.pt'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 for sig in sig_list:
