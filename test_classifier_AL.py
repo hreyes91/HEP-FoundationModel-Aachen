@@ -200,7 +200,7 @@ def parse_input():
     parser.add_argument("--num_events", type=int, default=10000, help="Number of events for training")
     parser.add_argument("--num_bins", type=int, nargs=3, default=[41, 31, 31], help="Number of bins per feature")
     parser.add_argument("--reverse", action='store_true', help="Whether to reverse pt order")
-
+    parser.add_argument("--model_name", type=str, default='best', help="model name")
     parser.add_argument("--pred_name", type=str, default='predictions_test.npz', help="predicitons name")
     
     args = parser.parse_args()
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     print(f"Loading test set")
     test_loader = get_dataloader(args.data_path_1,args.data_path_2)
     # construct model
-    model = load_model('best')
+    model = load_model(args.model_name)
     print("Loaded model")
     model.to(device)
     model.eval()

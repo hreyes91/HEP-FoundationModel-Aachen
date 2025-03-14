@@ -161,15 +161,16 @@ dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 hidden_dim_list=[256]
-batch_size_list=[64]
+batch_size_list=[256]
 num_events_list=[1000000]
 num_const_list=[100]
-lr_list=[.001]
+lr_list=[.0001]
 #num_events_val_max=500000
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_AL_finetune_AVGpoolhead_test_datav2_1/'+tag_of_train
-model_name='model_best.pt'
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_AL_finetune_AVGpoolhead_test_datav2_2/'+tag_of_train
+model_name='model_last.pt'
+model_name_test='last'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 for sig in sig_list:
     for bg in bg_list:
@@ -201,7 +202,7 @@ for sig in sig_list:
                                                     
                                                     model_dir=log_dir+'_'+name_sufix
                                                     
-                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
+                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')+' --model_name '+str(model_name_test)
                                                     
                                                     os.system(test_command)
                                                     TestResults(dict_auc,model_dir,r_tresh)

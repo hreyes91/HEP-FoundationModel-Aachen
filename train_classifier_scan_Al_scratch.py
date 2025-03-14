@@ -143,7 +143,7 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5']
+sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5']
 
 bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 
@@ -168,7 +168,7 @@ lr_list=[.0001]
 #num_events_val_max=500000
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_AL_finetune_wHLF_test_datav2_1/'+tag_of_train
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_AL_supervised_scratch_test_datav2_imbalanced_1/'+tag_of_train
 model_name='model_last.pt'
 model_name_test='last'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
@@ -195,14 +195,14 @@ for sig in sig_list:
                                                 
                                                 
                                                     name_sufix=random_string()
-                                                    train_command='python train_classifier_AL_wHLF.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
+                                                    train_command='python train_classifier_AL_2_scratch.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
                                                     os.system(train_command)
                                                     
                                                     
                                                     
                                                     model_dir=log_dir+'_'+name_sufix
                                                     
-                                                    test_command='python test_classifier_AL_wHLF.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')+' --model_name '+str(model_name_test)
+                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')+' --model_name '+str(model_name_test)
                                                     
                                                     os.system(test_command)
                                                     TestResults(dict_auc,model_dir,r_tresh)
