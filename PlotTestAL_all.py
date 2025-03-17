@@ -202,68 +202,70 @@ r_tresh=.5
 #dict_auc={'result':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[],'max_sic':[]}
 
 
-main_result_dir='/Users/humbertosmac/Documents/work/Foundation_Model/AnomalyDetection/Results/IdealizedClassification/'
+main_result_dir='/Users/humbertosmac/Documents/work/Foundation_Model/AnomalyDetection/Results/Supervised/Classification_supervised_imbalanced/'
 
 
-model_types={'scratch_LL+HLF':'scratch_avg_wHLF/Classification_AL_scratch_wHLF_scan_1/',
-              'finetuned_LL+HLF':'finetune_avg_wHLF/Classification_AL_finetune_wHLF_scan_1/',
-              'freezed_LL+HLF':'freezed_avg_wHLF/Classification_AL_freezed_wHLF_scan_1/',
-              'finetuned_LL':'fine_tuned_avgatt/Classification_AL_finetune_AVGpoolhead_1/'}
+model_types={'scratch LL+HLF':'Classification_AL_supervised_scratch_wHLF_test_datav2_imbalanced_1/',
+              'finetuned LL+HLF':'Classification_AL_supervised_finetune_wHLF_test_datav2_imbalanced_1/',
+              'scratch LL':'Classification_AL_supervised_scratch_test_datav2_imbalanced_1/',
+              'finetuned LL':'Classification_ALsupervised_finetune_AVGpoolhead_test_datav2_imbalanced_1/'}
 
-for model_type in model_types.keys():
+epochs_list=[1,60]
+for num_epochs in epoch_list:
+    for model_type in model_types.keys():
 
-    dict_auc={'result':[],'sig':[],'auc':[],'acc':[],'max_sic':[]}
-    results_dirs=os.listdir(main_result_dir+model_types.get(model_type))
+        dict_auc={'result':[],'sig':[],'auc':[],'acc':[],'max_sic':[]}
+        results_dirs=os.listdir(main_result_dir+model_types.get(model_type))
 
-    for result in results_dirs:
+        for result in results_dirs:
 
-            if 'LHCO_test_AL' not in result:
-                continue
-            try:
-                model_dir=main_result_dir+model_types.get(model_type)+'/'+result
-              
-                
-                TestResults(dict_auc,model_dir,r_tresh)
-                dict_auc.get('result').append(result)
-      
-                #except:
-                #    continue
-            except:
-                continue
+                if 'LHCO_test_AL' not in result:
+                    continue
+                try:
+                    model_dir=main_result_dir+model_types.get(model_type)+'/'+result
+                  
+                    
+                    TestResults(dict_auc,model_dir,r_tresh)
+                    dict_auc.get('result').append(result)
+          
+                    #except:
+                    #    continue
+                except:
+                    continue
 
-    '''
-    plot_title='fine-tuned'
-    plt.legend(loc='upper right')
-    plt.title(plot_title,loc='left')
-    
-    plt.savefig(path_to_plots+'/ROC_curves_'+model_type+'.pdf')
+        '''
+        plot_title='fine-tuned'
+        plt.legend(loc='upper right')
+        plt.title(plot_title,loc='left')
+        
+        plt.savefig(path_to_plots+'/ROC_curves_'+model_type+'.pdf')
+        plt.close()
+        '''
+
+        auc_frame=pd.DataFrame(dict_auc)
+
+        auc_frame=auc_frame.sort_values(by=['sig'])
+
+
+        
+        path_to_plots=main_result_dir+model_types.get(model_type)
+        auc_frame.to_csv(path_to_plots+'results.txt',index=False)
+
+
+        plot_title='LHCO-AachenT-QCDJetClass backbone-'+model_type
+        #PlotAUCs(auc_frame,path_to_plots,plot_title)
+
+        #PlotMaxSICs(auc_frame,path_to_plots,plot_title)
+
+        print(model_type)
+        plt.plot(auc_frame['sig'],auc_frame['auc'],'.',linestyle='-',label=model_type)
+        
+
+
+    plot_title='AUC'
+    plt.xlabel('signal injection')
+    plt.ylabel('m')
+    plt.legend()
+    plt.title(plot_title)
+    plt.savefig(main_result_dir+'maxsic_all.png')
     plt.close()
-    '''
-
-    auc_frame=pd.DataFrame(dict_auc)
-
-    auc_frame=auc_frame.sort_values(by=['sig'])
-
-
-    
-    path_to_plots=main_result_dir+model_types.get(model_type)
-    auc_frame.to_csv(path_to_plots+'results.txt',index=False)
-
-
-    plot_title='LHCO-AachenT-QCDJetClass backbone-'+model_type
-    #PlotAUCs(auc_frame,path_to_plots,plot_title)
-
-    #PlotMaxSICs(auc_frame,path_to_plots,plot_title)
-
-    print(model_type)
-    plt.plot(auc_frame['sig'],auc_frame['max_sic'],'.',linestyle='-',label=model_type)
-    
-
-
-plot_title='max SIC'
-plt.xlabel('signal injection')
-plt.ylabel('max SIC')
-plt.legend()
-plt.title(plot_title)
-plt.savefig(main_result_dir+'maxsic_all.png')
-plt.close()

@@ -143,32 +143,32 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_sn-N100-SR-Train.h5']
+sig_list=['discrete_1Mfromeach_403030_sn-N100-SR-Test.h5']
 
-bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
+bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Test.h5']
 
 #test_data
-data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
-data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
-num_events_test=50000
+data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Train.h5'
+data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Train.h5'
+num_events_test=20000
 r_tresh=.3
 dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[60]
+num_epochs_list=[1]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 hidden_dim_list=[256]
 batch_size_list=[128]
-num_events_list=[100000]
+num_events_list=[50000]
 num_const_list=[100]
 lr_list=[.001]
 #num_events_val_max=500000
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_ALsupervised_finetune_AVGpoolhead_test_datav2_imbalanced_1/'+tag_of_train
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Supervised_balanced/Classification_ALsupervised_finetune_AVGpoolhead_test_datav2_balanced_1/'+tag_of_train
 model_name='model_best.pt'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 for sig in sig_list:
