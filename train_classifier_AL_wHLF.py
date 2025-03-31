@@ -26,7 +26,7 @@ from helpers_train import (
 )
 
 torch.multiprocessing.set_sharing_strategy("file_system")
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def parse_input():
     parser = ArgumentParser()
@@ -241,9 +241,10 @@ def plot_rocs(model, val_loader, tag):
     preds = []
     model.eval()
     with torch.no_grad():
-        for jet1, padding_mask1, jet2, padding_mask2,hlf, label in tqdm(
-            train_loader, total=len(train_loader), desc=f"Validation Epoch {epoch + 1}"
-        ):
+        progress_bar =tqdm(
+                val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=True
+            )
+        for batch_idx, (jet1,padding_mask1, jet2, padding_mask2,hlf, label) in enumerate(val_loader):
             jet1 = jet1.to(device)
             padding_mask1 = padding_mask1.to(device)
             
@@ -265,6 +266,9 @@ def plot_rocs(model, val_loader, tag):
                 
             preds.append(logits.cpu().numpy())
             labels.append(label.cpu().numpy())
+
+            if batch_idx % 100 == 0:  # Update every 10 batches (adjust as needed)
+                progress_bar.update(100)
 
     preds = np.concatenate(preds, 0)
     labels = np.concatenate(labels, 0)
@@ -585,7 +589,7 @@ if __name__ == "__main__":
             progress_bar =tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=True
             )
-            for batch_idx, (jet1,padding_mask1, jet2, padding_mask2,hlf, label) in enumerate(train_loader):
+            for batch_idx, (jet1,padding_mask1, jet2, padding_mask2,hlf, label) in enumerate(val_loader):
             
             
                 jet1 = jet1.to(device)
@@ -603,14 +607,18 @@ if __name__ == "__main__":
                 loss = model.loss(logits, label.view(-1, 1).float())
                 val_loss.append(loss.cpu().detach().numpy())
                 val_loss_here=val_loss
+
+                if batch_idx % 100 == 0:  # Update every 10 batches (adjust as needed)
+                    progress_bar.update(100)
+
+
             val_loss = np.mean(val_loss)
             if val_loss < min_val_loss:
                 min_val_loss = val_loss
                 save_model(model, args.log_dir, "best")
             logger.add_scalar("Val/Loss", np.mean(val_loss), global_step)
         
-            if batch_idx % 100 == 0:  # Update every 10 batches (adjust as needed)
-                progress_bar.update(100)
+
         
         save_model(model, args.log_dir, "last")
         save_opt_states(

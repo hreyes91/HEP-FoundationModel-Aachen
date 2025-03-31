@@ -143,32 +143,32 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_sn-N100-SR-Test.h5']
+sig_list=['discrete_1Mfromeach_403030_sn-N100-SR-Train.h5']
 
-bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Test.h5']
+bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 
 #test_data
-data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Train.h5'
-data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Train.h5'
+data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test_150k.h5'
+data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
 num_events_test=20000
 r_tresh=.3
 dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[60]
+num_epochs_list=[30]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
 hidden_dim_list=[256]
 batch_size_list=[128]
-num_events_list=[50000]
+num_events_list=[500000]
 num_const_list=[100]
 lr_list=[.001]
 #num_events_val_max=500000
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Supervised_balanced/Classification_ALsupervised_finetune_AVGpoolhead_test_datav2_balanced_3/'+tag_of_train
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Supervised_imbalanced/Classification_AL_supervised_finetune_wHLF_test_datav2_imbalanced_4/'+tag_of_train
 model_name='model_best.pt'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 for sig in sig_list:
@@ -194,14 +194,14 @@ for sig in sig_list:
                                                 
                                                 
                                                     name_sufix=random_string()
-                                                    train_command='python train_classifier_AL_2.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
+                                                    train_command='python train_classifier_AL_wHLF.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)
                                                     os.system(train_command)
                                                     
                                                     
                                                     
                                                     model_dir=log_dir+'_'+name_sufix
                                                     
-                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
+                                                    test_command='python test_classifier_AL_wHLF_imbalanced.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')
                                                     
                                                     os.system(test_command)
                                                     TestResults(dict_auc,model_dir,r_tresh)

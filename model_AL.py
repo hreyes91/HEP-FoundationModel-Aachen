@@ -389,7 +389,7 @@ class JetTransformerALwHLF(Module):
         # Classification head with MLP and Average Pooling
         self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
       
-        self.mlp1 = nn.Linear(64 * 3, 128)  # After concatenating both jet representations
+        self.mlp1 = nn.Linear(64 * 3, 64*3)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
         self.mlp2 = nn.Linear(1, 128)  # Hidden layer after pooling
         self.output = nn.Linear(128, 1)  # Binary classification
@@ -578,7 +578,7 @@ class JetTransformerALwHLFScratch(Module):
         # Classification head with MLP and Average Pooling
         self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
       
-        self.mlp1 = nn.Linear(64 * 3, 128)  # After concatenating both jet representations
+        self.mlp1 = nn.Linear(64 * 3, 64*3)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
         self.mlp2 = nn.Linear(1, 128)  # Hidden layer after pooling
         self.output = nn.Linear(128, 1)  # Binary classification
