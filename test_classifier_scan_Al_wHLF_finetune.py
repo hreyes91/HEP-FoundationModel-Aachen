@@ -153,7 +153,7 @@ dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/RUN4/Classification_AL_finetune_wHLF_test_datav2_5/'+tag_of_train
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/RUN4/Classification_AL_finetune_wHLF_test_datav2_5/'
 model_name='model_best.pt'
 model_name_test='best'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
