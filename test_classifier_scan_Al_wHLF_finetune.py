@@ -166,7 +166,7 @@ for model_dir in models_dirs:
 
 
 
-        model_dir=log_dir+'_'+name_sufix
+        model_dir=log_dir+model_dir
         
         test_command='python test_classifier_AL_wHLF.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_best.npz')+' --model_name '+str(model_name_test)
         
