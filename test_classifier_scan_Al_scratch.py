@@ -157,7 +157,7 @@ model_name='model_best.pt'
 model_name_test='best'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 
-
+num_const=100
 models_dirs=os.listdir(log_dir)
 
 for model_dir in models_dirs:
