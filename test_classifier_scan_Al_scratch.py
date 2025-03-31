@@ -171,5 +171,6 @@ for model_dir in models_dirs:
                                                     
         os.system(test_command)
         TestResults(dict_auc,model_dir,r_tresh)
+        name_sufix=model_dir.split('_')[-1]
         dict_auc.get('suffix').append(name_sufix)
 
