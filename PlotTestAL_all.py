@@ -35,7 +35,7 @@ def extract_value(var,lines):
 
 def GetPredictions(model_dir):
 
-    predicitions_test = np.load(model_dir+'/predictions_test.npz')
+    predicitions_test = np.load(model_dir+'/predictions_test_best.npz')
     
     
     return predicitions_test
@@ -202,13 +202,13 @@ r_tresh=.5
 #dict_auc={'result':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[],'max_sic':[]}
 
 
-main_result_dir='//Users/humbertosmac/Documents/work/Foundation_Model/AnomalyDetection/Results/IdealizedClassification/RUN3/'
+main_result_dir='//Users/humbertosmac/Documents/work/Foundation_Model/AnomalyDetection/Results/IdealizedClassification/RUN4/'
 
 
-model_types={'scratch LL+HLF':'Classification_AL_scratch_wHLF_test_datav2_4/',
-              'finetuned LL+HLF':'Classification_AL_finetune_wHLF_test_datav2_4/',
-              'scratch LL':'Classification_AL_scratch_test_datav2_4/',
-              'finetuned LL':'Classification_AL_finetune_AVGpoolhead_test_datav2_4/'
+model_types={'scratch LL+HLF':'Classification_AL_scratch_wHLF_test_datav2_5/',
+              'finetuned LL+HLF':'Classification_AL_finetune_wHLF_test_datav2_5/',
+              'scratch LL':'Classification_AL_scratch_test_datav2_5/',
+              'finetuned LL':'Classification_AL_finetune_AVGpoolhead_test_datav2_5/'
               
               }
 
@@ -268,5 +268,5 @@ plt.xlabel('signal injection')
 plt.ylabel('auc')
 plt.legend()
 plt.title(plot_title)
-plt.savefig(main_result_dir+'auc_all.png')
+plt.savefig(main_result_dir+'auc_all_best.png')
 plt.close()
