@@ -71,11 +71,11 @@ class JetTransformerAL(Module):
         self.out_norm = original_model.out_norm
         self.dropout_layer = original_model.dropout
 
- 
+        self.flat = torch.nn.Flatten()
         # Classification head with MLP and Average Pooling
 
         # Classification head with MLP and Average Pooling
-        self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
+        self.jet_mlp = nn.Linear(hidden_dim*self.num_const, 64)  # Reduce hidden_dim to 64 per jet
       
         self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
@@ -165,11 +165,11 @@ class JetTransformerAL(Module):
         # Normalize and apply dropout
         emb = self.out_norm(emb)
         emb = self.dropout_layer(emb)
-
+        emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
-        jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
+        #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
-        return jet_repr
+        return emb
 
     def loss(self, logits, true_bin):
         """
@@ -229,11 +229,9 @@ class JetTransformerALScratch(Module):
         self.out_norm = LayerNorm(hidden_dim)
         self.dropout_layer = Dropout(dropout)
 
- 
-        # Classification head with MLP and Average Pooling
-
-        # Classification head with MLP and Average Pooling
-        self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
+        self.flat = torch.nn.Flatten()
+     
+        self.jet_mlp = nn.Linear(hidden_dim*self.num_const, 64)
       
         self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
@@ -323,11 +321,11 @@ class JetTransformerALScratch(Module):
         # Normalize and apply dropout
         emb = self.out_norm(emb)
         emb = self.dropout_layer(emb)
-
+        emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
-        jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
+        #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
-        return jet_repr
+        return emb
 
     def loss(self, logits, true_bin):
         """
@@ -370,7 +368,11 @@ class JetTransformerALwHLF(Module):
         # Output normalization and dropout are inherited from the original model
         self.out_norm = original_model.out_norm
         self.dropout_layer = original_model.dropout
+        self.flat = torch.nn.Flatten()
+        # Classification head with MLP and Average Pooling
 
+        # Classification head with MLP and Average Pooling
+        self.jet_mlp = nn.Linear(hidden_dim*self.num_const, 64)
  
         #HLF layers
         #self.hlf_mlp1 = nn.Linear(hlf_dim, hidden_dim)  # First MLP layer
@@ -382,14 +384,9 @@ class JetTransformerALwHLF(Module):
         
         
         self.hlf_mlp2 = nn.Linear(hidden_dim_hlf, 64)  # Final MLP
- 
- 
-        # Classification head with MLP and Average Pooling
 
-        # Classification head with MLP and Average Pooling
-        self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
       
-        self.mlp1 = nn.Linear(64 * 3, 64*3)  # After concatenating both jet representations
+        self.mlp1 = nn.Linear(64 * 3, 128)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
         self.mlp2 = nn.Linear(1, 128)  # Hidden layer after pooling
         self.output = nn.Linear(128, 1)  # Binary classification
@@ -490,11 +487,11 @@ class JetTransformerALwHLF(Module):
         # Normalize and apply dropout
         emb = self.out_norm(emb)
         emb = self.dropout_layer(emb)
-
+        emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
-        jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
+        #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
-        return jet_repr
+        return emb
 
     def loss(self, logits, true_bin):
         """
@@ -560,7 +557,11 @@ class JetTransformerALwHLFScratch(Module):
         self.out_norm = LayerNorm(hidden_dim)
         self.dropout_layer = Dropout(dropout)
 
- 
+        self.flat = torch.nn.Flatten()
+        # Classification head with MLP and Average Pooling
+
+        # Classification head with MLP and Average Pooling
+        self.jet_mlp = nn.Linear(hidden_dim*self.num_const, 64)
         #HLF layers
         #self.hlf_mlp1 = nn.Linear(hlf_dim, hidden_dim)  # First MLP layer
         
@@ -576,7 +577,7 @@ class JetTransformerALwHLFScratch(Module):
         # Classification head with MLP and Average Pooling
 
         # Classification head with MLP and Average Pooling
-        self.jet_mlp = nn.Linear(hidden_dim, 64)  # Reduce hidden_dim to 64 per jet
+   
       
         self.mlp1 = nn.Linear(64 * 3, 64*3)  # After concatenating both jet representations
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
@@ -679,11 +680,11 @@ class JetTransformerALwHLFScratch(Module):
         # Normalize and apply dropout
         emb = self.out_norm(emb)
         emb = self.dropout_layer(emb)
-
+        emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
-        jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
+        #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
-        return jet_repr
+        return emb
 
     def loss(self, logits, true_bin):
         """
@@ -701,6 +702,176 @@ class JetTransformerALwHLFScratch(Module):
 
 
 ###################################################################################################################################################################
+
+import torch
+import torch.nn as nn
+from torch.nn import Module, Embedding, TransformerEncoderLayer, TransformerEncoder, LayerNorm, Dropout
+
+class JetTransformerALwHLFSeparate(Module):
+    def __init__(
+        self,
+        original_model,
+        hidden_dim=256,
+        num_layers=8,
+        num_heads=4,
+        num_features=3,
+        num_bins=(41, 31, 31),
+        dropout=0.1,
+        num_const=100,
+        # HLF dims
+        # We assume each jet has 5 HLFs, so total 10. We'll process them as 5 + 5
+        hlf_per_jet=5,
+        hidden_dim_hlf=64,
+        # Additional
+        final_hidden=128,
+    ):
+        super(JetTransformerALwHLFSeparate, self).__init__()
+        
+        self.num_features = num_features
+        self.dropout = dropout
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        
+        # --------------------------
+        # 1) Feature embeddings (for pt, eta, phi)
+        # --------------------------
+        self.feature_embeddings = nn.ModuleList(
+            [
+                Embedding(embedding_dim=hidden_dim, num_embeddings=num_bins[l])
+                for l in range(num_features)
+            ]
+        )
+        
+        # --------------------------
+        # 2) Transformer for constituents
+        # --------------------------
+        self.layers = nn.ModuleList(
+            [
+                TransformerEncoderLayer(
+                    d_model=hidden_dim,
+                    nhead=num_heads,
+                    dim_feedforward=hidden_dim,
+                    batch_first=True,
+                    norm_first=True,
+                    dropout=dropout,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+
+        self.out_norm = LayerNorm(hidden_dim)
+        self.dropout_layer = Dropout(dropout)
+        
+        # Reduce the final representation of each jet’s constituent transformer to 64
+        self.jet_const_mlp = nn.Linear(hidden_dim, 64) 
+        
+        # --------------------------
+        # 3) Two separate MLPs for HLF
+        #    Each jet has 5 HLF features → embed to 64
+        # --------------------------
+        self.hlf_mlp = nn.Sequential(
+            nn.Linear(hlf_per_jet, hidden_dim_hlf),
+            nn.LeakyReLU(0.01),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim_hlf, 64),
+            nn.LeakyReLU(0.01),
+        )
+
+        
+        # --------------------------
+        # 4) Final classification head
+        #    We now have 4 × 64 = 256 dims after concatenating:
+        #    (jet1_const, jet2_const, jet1_hlf, jet2_hlf)
+        # --------------------------
+        self.fusion_mlp = nn.Sequential(
+            nn.Linear(64*4, final_hidden),
+            nn.LeakyReLU(0.01),
+            nn.Dropout(dropout),
+            nn.Linear(final_hidden, 1),
+        )
+        
+        # Loss
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, jet1, jet2, mask1, mask2, hlf):
+        """
+        jet1, jet2: shape (batch_size, n_const, 3). 
+        padding_mask1, padding_mask2: shape (batch_size, n_const) 
+          with True/False indicating valid constituents.
+        hlf: shape (batch_size, 10) if you store jammed 5 HLFs for jet1 and 5 for jet2 in one Tensor.
+        """
+        # ------------------------------------------------
+        # 1) Process each jet’s constituents with the transformer
+        # ------------------------------------------------
+        jet1_const_repr = self._process_jet(jet1, mask1)  # → (batch, hidden_dim)
+        jet2_const_repr = self._process_jet(jet2, mask2)  # → (batch, hidden_dim)
+        
+        # Reduce to 64
+        jet1_const_repr = self.jet_const_mlp(jet1_const_repr)  # → (batch, 64)
+        jet2_const_repr = self.jet_const_mlp(jet2_const_repr)  # → (batch, 64)
+        
+        # ------------------------------------------------
+        # 2) Split the HLF for each jet
+        # ------------------------------------------------
+        # We assume hlf.shape is (batch_size, 10) → first 5 for jet1, last 5 for jet2
+        batch_size = hlf.shape[0]
+        hlf_jet1 = hlf[:,0, :]  # (batch, 5)
+        hlf_jet2 = hlf[:,1,]  # (batch, 5)
+        
+        # Pass each set of HLFs through its MLP
+        hlf_repr_jet1 = self.hlf_mlp(hlf_jet1)  # → (batch, 64)
+        hlf_repr_jet2 = self.hlf_mlp(hlf_jet2)  # → (batch, 64)
+        
+        # ------------------------------------------------
+        # 3) Concatenate all 4 embeddings: shape (batch, 256)
+        # ------------------------------------------------
+        combined = torch.cat([jet1_const_repr, jet2_const_repr,
+                              hlf_repr_jet1, hlf_repr_jet2], dim=-1)
+        
+        # ------------------------------------------------
+        # 4) Final classification MLP
+        # ------------------------------------------------
+        logits = self.fusion_mlp(combined)  # → (batch, 1)
+        return logits
+
+    def _process_jet(self, jet_data, padding_mask):
+        """
+        Applies feature embeddings + transformer layers + mean pooling.
+        Returns shape: (batch_size, hidden_dim).
+        """
+        batch_size, num_const, num_features = jet_data.shape
+        jet_data[jet_data < 0] = 0  # Just as you had it
+
+        # Feature embeddings
+        emb = self.feature_embeddings[0](jet_data[:, :, 0])  # embedding for 1st feature
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](jet_data[:, :, i])
+        
+        # Build causal mask
+        seq_len = emb.shape[1]
+        seq_idx = torch.arange(seq_len, device=emb.device)
+        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)
+        
+        # invert the padding mask for the transformer’s src_key_padding_mask
+        padding_mask = ~padding_mask
+        
+        # Apply each transformer layer
+        for layer in self.layers:
+            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+        
+        # out_norm + dropout
+        emb = self.out_norm(emb)
+        emb = self.dropout_layer(emb)
+        
+        # Mean pool across constituents
+        #jet_repr = emb.mean(dim=1)
+        return emb
+
+    def loss(self, logits, true_bin):
+        return self.criterion(logits, true_bin)
+
+
+
 
 
 class JetTransformerClassifier(Module):
