@@ -143,7 +143,7 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5']
+sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5']
 
 bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 
@@ -156,7 +156,7 @@ dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[90]
+num_epochs_list=[50]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[4]
@@ -168,7 +168,7 @@ lr_list=[.0001]
 #num_events_val_max=500000
 
 tag_of_train='LHCO_test_AL_1'
-log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/Classification_AL_scratch_wHLF_test_datav2_10/'+tag_of_train
+log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/RUN11/Classification_AL_scratch_wHLF_test_datav2_11/'+tag_of_train
 model_name='model_last.pt'
 model_name_test='last'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'

@@ -126,7 +126,7 @@ class JetTransformerAL(Module):
             #print('x after mpl2')
             #print(x)
             #print(x.shape)
-            #x=torch.nn.Flatten()(x)
+            x=torch.nn.Flatten()(x)
             x = self.output(x)
         
         
@@ -164,8 +164,8 @@ class JetTransformerAL(Module):
 
         # Normalize and apply dropout
         emb = self.out_norm(emb)
-        emb = self.dropout_layer(emb)
-        emb = self.flat(emb)
+        #emb = self.dropout_layer(emb)
+        #emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
         #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
@@ -195,13 +195,22 @@ class JetTransformerALScratch(Module):
         num_features=3,
         num_bins=(41, 31, 31),
         dropout=0.1,
-        num_const=100
+        num_const=100,
+        jet_emb=False,
+        pooling='False',
+        direct='True'
+        
+
+
+
     ):
         super(JetTransformerALScratch, self).__init__()
         self.num_features = num_features
         self.dropout = dropout
         self.num_const = num_const
-
+        self.jet_emb = jet_emb
+        self.pooling = pooling
+        self.direct = direct
   
         # learn embedding for each bin of each feature dim
         self.feature_embeddings = ModuleList(
@@ -231,12 +240,21 @@ class JetTransformerALScratch(Module):
 
         self.flat = torch.nn.Flatten()
      
-        self.jet_mlp = nn.Linear(hidden_dim*self.num_const, 64)
-      
-        self.mlp1 = nn.Linear(64 * 2, 128)  # After concatenating both jet representations
+        self.jet_mlp = nn.Linear(hidden_dim, 64)
+        if self.direct=='False':
+            self.mlp1 = nn.Linear(64 * 2, 128)
+              # After concatenating both jet representations
+        elif self.direct=='True':  
+            self.mlp1 = nn.Linear( 64*2, 128)
+
+
+
         self.avg_pool = nn.AdaptiveAvgPool1d(1)  # Pooling over feature dimension
         self.mlp2 = nn.Linear(1, 128)  # Hidden layer after pooling
-        self.output = nn.Linear(128, 1)  # Binary classification
+        if self.jet_emb=='False':
+            self.output = nn.Linear(128*self.num_const, 1)  # Binary classification
+        elif self.jet_emb=='True':
+            self.output = nn.Linear(128, 1)  # Binary classification
         
         # Criterion for binary classification
         self.criterion = torch.nn.BCEWithLogitsLoss()
@@ -250,14 +268,15 @@ class JetTransformerALScratch(Module):
         jet1_repr = self._process_jet(jet1, padding_mask1)  # Process jet1
         jet2_repr = self._process_jet(jet2, padding_mask2)  # Process jet2
 
+        if self.direct=='False':
+            jet1_repr = self.jet_mlp(jet1_repr)  # (batch, 64)
+            jet2_repr = self.jet_mlp(jet2_repr)  # (batch, 64)
+        
 
-        jet1_repr = self.jet_mlp(jet1_repr)  # (batch, 64)
-        jet2_repr = self.jet_mlp(jet2_repr)  # (batch, 64)
-
-        pooling='avg'
+       
         # Concatenate the representations of jet1 and jet2
         combined_repr = torch.cat([jet1_repr, jet2_repr], dim=-1)  # Shape: [batch_size, hidden_dim * 2]
-        if pooling=='avg':
+        if self.pooling=='avg':
             # MLP processing
             x = self.mlp1(combined_repr)
             x = torch.nn.Dropout(p=0.1)(x)
@@ -282,11 +301,17 @@ class JetTransformerALScratch(Module):
             #print('x after mpl2')
             #print(x)
             #print(x.shape)
-            #x=torch.nn.Flatten()(x)
+            if self.jet_emb=='False':
+                x=torch.nn.Flatten()(x)
+
+
             x = self.output(x)
         
-        
-     
+        elif self.pooling=='False':
+            x = self.mlp1(combined_repr)
+            x = torch.nn.Dropout(p=0.1)(x)
+            x = torch.nn.LeakyReLU(negative_slope=0.01)(x)
+            x = self.output(x)
         
         #print('x after output')
         #print(x)
@@ -319,13 +344,14 @@ class JetTransformerALScratch(Module):
             emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
 
         # Normalize and apply dropout
-        emb = self.out_norm(emb)
-        emb = self.dropout_layer(emb)
-        emb = self.flat(emb)
+        jet_repr = self.out_norm(emb)
+        #emb = self.dropout_layer(emb)
+        #emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
-        #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
+        if self.jet_emb=='True':
+            jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
-        return emb
+        return jet_repr
 
     def loss(self, logits, true_bin):
         """
@@ -340,6 +366,336 @@ class JetTransformerALScratch(Module):
 
 
 ##################################################################################
+
+
+
+
+
+##################################################################################
+
+import torch
+import torch.nn as nn
+from torch.nn import (
+    Module,
+    Embedding,
+    TransformerEncoderLayer,
+    TransformerEncoder,
+    LayerNorm,
+    Dropout
+)
+
+class JetTransformerALScratchCLS(Module):
+    def __init__(
+        self,
+        hidden_dim=256,
+        num_layers=8,
+        num_heads=4,
+        num_features=3,
+        num_bins=(41, 31, 31),
+        dropout=0.1,
+        num_const=100,
+        # Extra: second downstream Transformer settings
+        downstream_num_layers=2,
+        downstream_num_heads=2,
+        jet_last_emb='False'
+    ):
+        super(JetTransformerALScratchCLS, self).__init__()
+        
+        self.num_features = num_features
+        self.dropout = dropout
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        self.jet_last_emb = jet_last_emb
+        # ===============  (1) ORIGINAL / PRE-TRAINED PART  ===============
+        # Same as your original: feature embeddings + N-layers of Transformer
+        self.feature_embeddings = nn.ModuleList(
+            [
+                Embedding(embedding_dim=hidden_dim, num_embeddings=num_bins[i])
+                for i in range(num_features)
+            ]
+        )
+        
+        self.layers = nn.ModuleList(
+            [
+                TransformerEncoderLayer(
+                    d_model=hidden_dim,
+                    nhead=num_heads,
+                    dim_feedforward=hidden_dim,
+                    batch_first=True,
+                    norm_first=True,
+                    dropout=dropout,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+        self.out_norm = LayerNorm(hidden_dim)
+        self.dropout_layer = Dropout(dropout)
+
+        # This linear layer reduces the jet embedding from the first-stage
+        # (only if you had something like that originally).
+        # Or skip it if your old code didn't have it.
+        self.jet_mlp = nn.Linear(hidden_dim, hidden_dim)
+        
+        # ===============  (2) DOWNSTREAM CLS HEAD  ===============
+        # A second Transformer (small) that processes [CLS2, Jet1_repr, Jet2_repr]
+        encoder_layer2 = TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=downstream_num_heads,
+            dim_feedforward=hidden_dim,
+            dropout=dropout,
+            batch_first=True,
+            norm_first=True
+        )
+        self.downstream_transformer = TransformerEncoder(encoder_layer2, num_layers=downstream_num_layers)
+        
+        # A new CLS token for the downstream classification
+        self.cls_token2 = nn.Parameter(torch.randn(1, 1, hidden_dim))
+        
+        # Final classification
+        self.final_classifier = nn.Linear(hidden_dim, 1)
+        
+        # Criterion
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, jet1, jet2, padding_mask1, padding_mask2, labels=None):
+        """
+        (A) Use the existing Transformer (unchanged) to get a single vector per jet
+        (B) Combine those vectors in a second small Transformer with a new [CLS2] token
+        (C) Output a single logit per event
+        """
+        # ========== (A) FIRST-STAGE TRANSFORMER (Unchanged) ==========
+        jet1_repr = self._process_jet(jet1, padding_mask1)  # [B, hidden_dim]
+        jet2_repr = self._process_jet(jet2, padding_mask2)  # [B, hidden_dim]
+        
+        # (Optional) pass through old MLP or standard dropout, etc. from your code
+        
+        if self.jet_last_emb=='True':
+            jet1_repr = self.jet_mlp(jet1_repr)  # still [B, hidden_dim]
+            jet2_repr = self.jet_mlp(jet2_repr)
+
+        # ========== (B) DOWNSTREAM CLS-BASED TRANSFORMER ==========
+        # Put the two jet embeddings side by side
+        # shape = [B, 2, hidden_dim]
+        combined_jets = torch.stack([jet1_repr, jet2_repr], dim=1)
+        
+        # Insert the second CLS token at the front
+        B = jet1_repr.size(0)
+        cls2 = self.cls_token2.expand(B, -1, -1)  # [B, 1, hidden_dim]
+        
+        # shape = [B, 3, hidden_dim]
+        downstream_input = torch.cat([cls2, combined_jets], dim=1)
+        
+        # Pass through small downstream Transformer
+        out2 = self.downstream_transformer(downstream_input)
+        
+        # The [CLS2] representation is in index 0
+        cls_output = out2[:, 0, :]  # [B, hidden_dim]
+        
+        # Final classification
+        logits = self.final_classifier(cls_output)  # [B, 1]
+
+        # If labels are provided, return loss
+        if labels is not None:
+            return logits, self.loss(logits, labels)
+        return logits
+
+    def _process_jet(self, jet_data, padding_mask):
+        """
+        This is your *original* method that processes a single jet.
+        It could do mean pooling or an existing [CLS], etc. 
+        We'll keep it exactly as you had it, minus references to HLF.
+        """
+        batch_size, num_const, _ = jet_data.shape
+        jet_data[jet_data < 0] = 0
+
+        # Feature embeddings
+        emb = self.feature_embeddings[0](jet_data[:, :, 0])
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](jet_data[:, :, i])
+
+        # Build a causal mask if you originally did that
+        seq_len = emb.shape[1]
+        seq_idx = torch.arange(seq_len, device=emb.device)
+        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)
+
+        # Invert padding mask if you used True=valid
+        padding_mask = ~padding_mask
+
+        # Pass through all original Transformer layers
+        for layer in self.layers:
+            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+
+        # Normalization + dropout
+        emb = self.out_norm(emb)
+        emb = self.dropout_layer(emb)
+        #jet_repr=emb
+        # Suppose the old code ended with:
+        # return emb.mean(dim=1)
+        # We'll keep that. So each jet is [B, hidden_dim].
+        jet_repr = emb.mean(dim=1)
+        return jet_repr
+
+    def loss(self, logits, labels):
+        return self.criterion(logits, labels)
+##################################################################################
+
+
+class JetTransformerALFineTuneCLS(Module):
+    def __init__(
+        self,
+        hidden_dim=256,
+        num_layers=8,
+        num_heads=4,
+        num_features=3,
+        num_bins=(41, 31, 31),
+        dropout=0.1,
+        num_const=100,
+        # Extra: second downstream Transformer settings
+        downstream_num_layers=2,
+        downstream_num_heads=2,
+        jet_last_emb='False'
+    ):
+        super(JetTransformerALFineTuneCLS, self).__init__()
+        
+        self.num_features = num_features
+        self.dropout = dropout
+        self.num_const = num_const
+        self.hidden_dim = hidden_dim
+        self.jet_last_emb = jet_last_emb
+        # ===============  (1) ORIGINAL / PRE-TRAINED PART  ===============
+        # Same as your original: feature embeddings + N-layers of Transformer
+        self.feature_embeddings = nn.ModuleList(
+            [
+                Embedding(embedding_dim=hidden_dim, num_embeddings=num_bins[i])
+                for i in range(num_features)
+            ]
+        )
+        
+        self.layers = nn.ModuleList(
+            [
+                TransformerEncoderLayer(
+                    d_model=hidden_dim,
+                    nhead=num_heads,
+                    dim_feedforward=hidden_dim,
+                    batch_first=True,
+                    norm_first=True,
+                    dropout=dropout,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+        self.out_norm = LayerNorm(hidden_dim)
+        self.dropout_layer = Dropout(dropout)
+
+        # This linear layer reduces the jet embedding from the first-stage
+        # (only if you had something like that originally).
+        # Or skip it if your old code didn't have it.
+        self.jet_mlp = nn.Linear(hidden_dim, hidden_dim)
+        
+        # ===============  (2) DOWNSTREAM CLS HEAD  ===============
+        # A second Transformer (small) that processes [CLS2, Jet1_repr, Jet2_repr]
+        encoder_layer2 = TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=downstream_num_heads,
+            dim_feedforward=hidden_dim,
+            dropout=dropout,
+            batch_first=True,
+            norm_first=True
+        )
+        self.downstream_transformer = TransformerEncoder(encoder_layer2, num_layers=downstream_num_layers)
+        
+        # A new CLS token for the downstream classification
+        self.cls_token2 = nn.Parameter(torch.randn(1, 1, hidden_dim))
+        
+        # Final classification
+        self.final_classifier = nn.Linear(hidden_dim, 1)
+        
+        # Criterion
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def forward(self, jet1, jet2, padding_mask1, padding_mask2, labels=None):
+        """
+        (A) Use the existing Transformer (unchanged) to get a single vector per jet
+        (B) Combine those vectors in a second small Transformer with a new [CLS2] token
+        (C) Output a single logit per event
+        """
+        # ========== (A) FIRST-STAGE TRANSFORMER (Unchanged) ==========
+        jet1_repr = self._process_jet(jet1, padding_mask1)  # [B, hidden_dim]
+        jet2_repr = self._process_jet(jet2, padding_mask2)  # [B, hidden_dim]
+        
+        # (Optional) pass through old MLP or standard dropout, etc. from your code
+        
+        if self.jet_last_emb=='True':
+            jet1_repr = self.jet_mlp(jet1_repr)  # still [B, hidden_dim]
+            jet2_repr = self.jet_mlp(jet2_repr)
+
+        # ========== (B) DOWNSTREAM CLS-BASED TRANSFORMER ==========
+        # Put the two jet embeddings side by side
+        # shape = [B, 2, hidden_dim]
+        combined_jets = torch.stack([jet1_repr, jet2_repr], dim=1)
+        
+        # Insert the second CLS token at the front
+        B = jet1_repr.size(0)
+        cls2 = self.cls_token2.expand(B, -1, -1)  # [B, 1, hidden_dim]
+        
+        # shape = [B, 3, hidden_dim]
+        downstream_input = torch.cat([cls2, combined_jets], dim=1)
+        
+        # Pass through small downstream Transformer
+        out2 = self.downstream_transformer(downstream_input)
+        
+        # The [CLS2] representation is in index 0
+        cls_output = out2[:, 0, :]  # [B, hidden_dim]
+        
+        # Final classification
+        logits = self.final_classifier(cls_output)  # [B, 1]
+
+        # If labels are provided, return loss
+        if labels is not None:
+            return logits, self.loss(logits, labels)
+        return logits
+
+    def _process_jet(self, jet_data, padding_mask):
+        """
+        This is your *original* method that processes a single jet.
+        It could do mean pooling or an existing [CLS], etc. 
+        We'll keep it exactly as you had it, minus references to HLF.
+        """
+        batch_size, num_const, _ = jet_data.shape
+        jet_data[jet_data < 0] = 0
+
+        # Feature embeddings
+        emb = self.feature_embeddings[0](jet_data[:, :, 0])
+        for i in range(1, self.num_features):
+            emb += self.feature_embeddings[i](jet_data[:, :, i])
+
+        # Build a causal mask if you originally did that
+        seq_len = emb.shape[1]
+        seq_idx = torch.arange(seq_len, device=emb.device)
+        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)
+
+        # Invert padding mask if you used True=valid
+        padding_mask = ~padding_mask
+
+        # Pass through all original Transformer layers
+        for layer in self.layers:
+            emb = layer(src=emb, src_mask=causal_mask, src_key_padding_mask=padding_mask)
+
+        # Normalization + dropout
+        emb = self.out_norm(emb)
+        emb = self.dropout_layer(emb)
+        #jet_repr=emb
+        # Suppose the old code ended with:
+        # return emb.mean(dim=1)
+        # We'll keep that. So each jet is [B, hidden_dim].
+        jet_repr = emb.mean(dim=1)
+        return jet_repr
+
+    def loss(self, logits, labels):
+        return self.criterion(logits, labels)
+
+
+###########################################################################################
 
 class JetTransformerALwHLF(Module):
     def __init__(
@@ -448,7 +804,7 @@ class JetTransformerALwHLF(Module):
             #print('x after mpl2')
             #print(x)
             #print(x.shape)
-            #x=torch.nn.Flatten()(x)
+            x=torch.nn.Flatten()(x)
             x = self.output(x)
         
         
@@ -486,8 +842,8 @@ class JetTransformerALwHLF(Module):
 
         # Normalize and apply dropout
         emb = self.out_norm(emb)
-        emb = self.dropout_layer(emb)
-        emb = self.flat(emb)
+        #emb = self.dropout_layer(emb)
+        #emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
         #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         
@@ -641,7 +997,7 @@ class JetTransformerALwHLFScratch(Module):
             #print('x after mpl2')
             #print(x)
             #print(x.shape)
-            #x=torch.nn.Flatten()(x)
+            x=torch.nn.Flatten()(x)
             x = self.output(x)
         
         
@@ -679,8 +1035,8 @@ class JetTransformerALwHLFScratch(Module):
 
         # Normalize and apply dropout
         emb = self.out_norm(emb)
-        emb = self.dropout_layer(emb)
-        emb = self.flat(emb)
+        #emb = self.dropout_layer(emb)
+        #emb = self.flat(emb)
         # Take the representation of the [CLS] token or apply pooling if needed
         #jet_repr = emb.mean(dim=1)  # Taking mean pooling across all constituents
         

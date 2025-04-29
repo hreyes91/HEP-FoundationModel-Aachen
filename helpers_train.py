@@ -36,6 +36,11 @@ def get_cos_scheduler(num_epochs, num_batches, optimizer, eta_min=1e-6):
     )
     return scheduler
 
+def get_ReduceLROnPlateau(optimizer, patience=3, min_lr=1e-7):
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1,
+                                                 patience=patience, verbose=True,min_lr=min_lr)
+    return scheduler
+
 
 def save_opt_states(optimizer, scheduler, scaler, log_dir):
     torch.save(

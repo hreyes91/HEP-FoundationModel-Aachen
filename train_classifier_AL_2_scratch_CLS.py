@@ -4,7 +4,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from argparse import ArgumentParser
 
-from model_AL import JetTransformerALScratch
+from model_AL import JetTransformerALScratchCLS
 
 
 
@@ -107,21 +107,15 @@ def parse_input():
         "--num_heads", type=int, default=4, help="Number of attention heads"
     )
 
+    
     parser.add_argument(
-        "--jet_emb", type=str, default='False', help="jet_embedding"
-    )
-
-    parser.add_argument(
-        "--pooling", type=str, default='False', help="pooling"
-    )
-
-    parser.add_argument(
-        "--direct", type=str, default='False', help="pooling"
+        "--jet_last_emb", type=str, default='False', help="jet last emb"
     )
 
     parser.add_argument(
         "--scheduler_name", type=str, default='cos', help="lr scheduler"
     )
+
 
     parser.add_argument("--dropout", type=float, default=0.1, help="dropout rate")
     parser.add_argument(
@@ -439,7 +433,7 @@ if __name__ == "__main__":
     
     
     # construct model
-    model = JetTransformerALScratch(original_model,
+    model = JetTransformerALScratchCLS(
         hidden_dim=args.hidden_dim,
 
         num_layers=args.num_layers,
@@ -448,9 +442,7 @@ if __name__ == "__main__":
         num_bins=(41, 31, 31),
         dropout=args.dropout,
         num_const=args.num_const,
-        jet_emb=args.jet_emb,
-        pooling=args.pooling,
-        direct=args.direct
+        jet_last_emb=args.jet_last_emb
         
         )
     model.to(device)
@@ -527,13 +519,6 @@ if __name__ == "__main__":
     #opt.load_state_dict(filtered_opt_state_dict)
     
     #print(opt.state_dict())
-    '''
-    scheduler = get_cos_scheduler(
-        num_epochs=args.num_epochs,
-        num_batches=len(train_loader),
-        optimizer=opt,
-    )
-    '''
 
     if args.scheduler_name=='cos':
         scheduler = get_cos_scheduler(
@@ -544,11 +529,22 @@ if __name__ == "__main__":
     
     if args.scheduler_name=='reduce':
         scheduler =get_ReduceLROnPlateau(optimizer=opt, patience=3, min_lr=1e-8)
+
+
+    if args.scheduler_name=='combined':
+            scheduler = get_cos_scheduler(
+            num_epochs=args.num_epochs,
+            num_batches=len(train_loader),
+            optimizer=opt,
+        )
+    
     
     scaler = torch.cuda.amp.GradScaler()
     
-    stopping_patience=10
+    
 ######################################################################
+    stopping_patience=10
+
     logger = SummaryWriter(args.log_dir)
     global_step = 0
     loss_list = []
@@ -558,8 +554,14 @@ if __name__ == "__main__":
     
     perplexity_list = []
     min_val_loss = np.inf
+    min_train_loss = np.inf
     
     for epoch in range(args.num_epochs):
+        if args.scheduler_name=='combined' and epoch==6:
+            print('Combined scheduling approach. Epoch > 5. Swithing from cos to reduce.')
+            scheduler =get_ReduceLROnPlateau(optimizer=opt, patience=1, min_lr=1e-8)
+
+
         model.train()
         loss_list_here=[]
         #for jet1, padding_mask1, jet2, padding_mask2, label in tqdm(
@@ -587,7 +589,9 @@ if __name__ == "__main__":
             scaler.step(opt)
             scaler.update()
             if args.scheduler_name=='cos':
-                scheduler.step(val_loss)
+                scheduler.step()
+            if args.scheduler_name=='combined' and epoch < 5:
+                scheduler.step()
             #print('losss')
             #print(loss.cpu().detach().numpy())
             #print(float(loss.cpu().detach().numpy()))
@@ -640,18 +644,28 @@ if __name__ == "__main__":
             val_loss = np.mean(val_loss)
             if args.scheduler_name=='reduce':
                 scheduler.step(val_loss)
+
+            if args.scheduler_name=='combined' and epoch >= 5:
+                scheduler.step(val_loss)
+
             if val_loss < min_val_loss:
                 min_val_loss = val_loss
                 save_model(model, args.log_dir, "best")
+                
+            print('saving model epoch'+str(epoch))
+            save_model(model, args.log_dir, "epoch_"+str(epoch))
 
+            '''
                 wait = 0
                 best_epoch = epoch
-                save_model(model, args.log_dir, "best")
+                
             else:
                 wait += 1
                 if wait >= stopping_patience:
                     print(f"Early stopping triggered at epoch {epoch+1} (no val_loss improvement in {stopping_patience} epochs).")
                     break
+            '''
+
             logger.add_scalar("Val/Loss", np.mean(val_loss), global_step)
         
 
@@ -661,6 +675,22 @@ if __name__ == "__main__":
             optimizer=opt, scheduler=scheduler, scaler=scaler, log_dir=args.log_dir
         )
         mean_loss=np.mean(loss_list_here)
+
+
+        if mean_loss < min_train_loss:
+                min_train_loss = mean_loss
+                save_model(model, args.log_dir, "best_train")
+                print('Found better model according to train loss')
+                wait = 0
+                best_epoch = epoch
+                
+        else:
+                wait += 1
+                if wait >= stopping_patience:
+                    print(f"Early stopping triggered at epoch {epoch+1} (no val_loss improvement in {stopping_patience} epochs).")
+                    break
+
+
         mean_val=val_loss
         loss_list_epoch.append(mean_loss)
         val_list_epoch.append(mean_val)
