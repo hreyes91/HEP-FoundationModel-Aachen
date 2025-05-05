@@ -17,5 +17,12 @@ jobscript*
 *.pt
 *.png
 *.pdf
+*.svg
+*.sh
+*.sub
+*.log
+*.err
+*.out
+*.jpeg
 
 logs*
