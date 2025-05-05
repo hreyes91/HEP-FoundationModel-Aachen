@@ -241,7 +241,7 @@ def qq_plot(data_true,data_samp,data_name,path_to_plots,bins,htype,truetrain):
     plt.savefig(path_to_plots+'/hist_'+data_name+truetrain+'.svg')
     plt.close()
 
-def LoadTrue(discrete_truedata_filename,n_samples,pt_bins,eta_bins,phi_bins,key,sample):
+def LoadTrue(discrete_truedata_filename,n_samples,pt_bins,eta_bins,phi_bins,key,sample=True,noise=False):
 
 
     tmp = pd.read_hdf(discrete_truedata_filename, key=key, stop=None)
@@ -253,7 +253,7 @@ def LoadTrue(discrete_truedata_filename,n_samples,pt_bins,eta_bins,phi_bins,key,
     tmp=tmp[:,:,:]
 
     mask = tmp[:, :, 0] == -1
-    jets_true,ptj_true,mj_true = make_continues(tmp, mask,pt_bins,eta_bins,phi_bins, noise=False)
+    jets_true,ptj_true,mj_true = make_continues(tmp, mask,pt_bins,eta_bins,phi_bins, noise=noise)
 
     return jets_true,ptj_true,mj_true
 
@@ -281,7 +281,7 @@ def LoadJetClass(filename,nJets):
 
     return continues_jets, ptj, mj
 
-def LoadSGenamples(filename,pt_bins,eta_bins,phi_bins,n_samples):
+def LoadSGenamples(filename,pt_bins,eta_bins,phi_bins,n_samples,noise=False):
 
     tmp = pd.read_hdf(filename, key="discretized", stop=None)
     #print(tmp.shape)
@@ -289,7 +289,7 @@ def LoadSGenamples(filename,pt_bins,eta_bins,phi_bins,n_samples):
     tmp = tmp.to_numpy()[:, :600].reshape(len(tmp), -1, 3)
 
     mask = tmp[:, :, 0] == -1
-    jets,ptj,mj = make_continues(tmp, mask,pt_bins,eta_bins,phi_bins, noise=False)
+    jets,ptj,mj = make_continues(tmp, mask,pt_bins,eta_bins,phi_bins, noise=noise)
 
     return jets,ptj,mj
 
