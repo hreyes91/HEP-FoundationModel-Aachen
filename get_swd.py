@@ -77,72 +77,72 @@ def get_swd(data_true,data_samp,iter_swd=100,n_slices=10):
     #output: metric_lists: iter_swd * nslices values; metric_means: iter_swd means( one per slice=direction): metric_stds: std of each mean
     return swd_res
 
-def get_swd_dist(name,iter_calc=1000,iter_swd=100,max_const=30,n_slices=10,jetclass=False):
+def get_swd_dist(name,iter_calc=1000,iter_swd=100,max_const=30,n_slices=10):
     n_samples_true=200000
-    if jetclass==True:
-        if name=='ZToNuNu':
-            filename='/net/data_ttk/hreyes/JetClass/JetClass_pt_part/ZJetsToNuNu_train.h5'
-        else:
-            filename=f'/net/data_ttk/hreyes/JetClass/JetClass_pt_part/{name}_train.h5'
-        jets_true,ptj_true,mj_true=deh.LoadJetClass(filename,nJets=10000000)    
+    if name=='ZToNuNu':
+        filename='/net/data_ttk/hreyes/JetClass/JetClass_pt_part/ZJetsToNuNu_train.h5'
+        filename_disc_truedata='/net/data_ttk/koller/JetClass/discretized/ZJetsToNuNu_train___1Mfromeach_403030.h5'
     else:
-        if name=='ZToNuNu':
-            filename_disc_truedata='/net/data_ttk/koller/JetClass/discretized/ZJetsToNuNu_train___1Mfromeach_403030.h5'
+        filename=f'/net/data_ttk/hreyes/JetClass/JetClass_pt_part/{name}_train.h5'
+        filename_disc_truedata=f'/net/data_ttk/koller/JetClass/discretized/{name}_train___1Mfromeach_403030.h5'
+    jets_disc,ptj_disc,mj_disc=deh.LoadTrue(filename_disc_truedata,n_samples_true,pt_bins,eta_bins,phi_bins,key="discretized",sample=False)
+    jets_cont,ptj_cont,mj_cont=deh.LoadJetClass(filename,nJets=10000000)    
+
+    jets=[jets_cont,jets_disc]
+    o=0
+    for jets_true in jets:
+        #only use first 30 constituents
+        jets_true=jets_true[:,:max_const,:]
+        jets_true=np.reshape(jets_true,(-1,3*max_const))
+
+        #get shuffled version of data
+        jets_random=np.random.permutation(jets_true)
+
+        #divide data into iter_calc batches
+        jets_1=np.reshape(jets_true,(iter_calc,-1,3*max_const))
+        jets_2=np.reshape(jets_random,(iter_calc,-1,3*max_const))
+
+        res_mean=np.empty((iter_calc,iter_swd))
+        res_stds=np.empty((iter_calc,iter_swd))
+        for k in range(iter_calc):
+            swd=get_swd(jets_1[k],jets_2[k])
+            res_mean[k]=swd['metric_means']
+            res_stds[k]=swd['metric_stds']
+        
+        means=np.reshape(res_mean,(-1))
+        stds=np.reshape(res_stds,(-1))
+
+        min_x=0.95*min(means)
+        max_x=1.05*max(means)
+        bins=np.arange(min_x,max_x,(max_x-min_x)/100)
+        plt.figure(figsize=(8,5))
+        n,bins,patches=plt.hist(means,bins=bins,density=True,cumulative=True,color='black',histtype='step')
+        t_68=bins[np.where(n>=0.68)[0][0]]
+        t_95=bins[np.where(n>=0.95)[0][0]]
+        t_99=bins[np.where(n>=0.99)[0][0]]
+        print(t_68)
+        plt.hlines(1,min_x,max_x,color='dimgrey',linestyle='dashed')
+        plt.hlines([0.68,0.95,0.99],min_x,max_x,color='darkgray',linestyle='dotted')
+        plt.vlines([t_68,t_95,t_99],0,1.1,color='dimgrey')
+        plt.fill_betweenx([0,1.1],t_68,t_95,color='powderblue',alpha=0.45,label=f'68\%: t={round(t_68,4)}')
+        plt.fill_betweenx([0,1.1],t_95,t_99,color='powderblue',alpha=0.75,label=f'95\%: t={round(t_95,4)}')
+        plt.fill_betweenx([0,1.1],t_99,max_x,color='powderblue',label=f'99\%: t={round(t_99,4)}')
+        plt.legend(loc='upper right')
+        plt.yscale('log')
+        plt.xlim((min_x,max_x))
+        plt.ylim((0,1.1))
+        plt.xlabel(f'$t_{{SWD}}$')
+        plt.title(f'CDF for {name} particle features, 30 constituents')
+        #plt.savefig(f'plots_swd/swd_dist_{name}.png')
+        if o==0:
+            plt.savefig(f'plots_swd/swd_dist_{name}_jetclass.svg')
+            o=1
         else:
-            filename_disc_truedata=f'/net/data_ttk/koller/JetClass/discretized/{name}_train___1Mfromeach_403030.h5'
-        jets_true,ptj_true,mj_true=deh.LoadTrue(filename_disc_truedata,n_samples_true,pt_bins,eta_bins,phi_bins,key="discretized",sample=False)
-
-    #only use first 30 constituents
-    jets_true=jets_true[:,:max_const,:]
-    jets_true=np.reshape(jets_true,(-1,3*max_const))
-
-    #get shuffled version of data
-    jets_random=np.random.permutation(jets_true)
-
-    #divide data into iter_calc batches
-    jets_1=np.reshape(jets_true,(iter_calc,-1,3*max_const))
-    jets_2=np.reshape(jets_random,(iter_calc,-1,3*max_const))
-
-    res_mean=np.empty((iter_calc,iter_swd))
-    res_stds=np.empty((iter_calc,iter_swd))
-    for k in range(iter_calc):
-        swd=get_swd(jets_1[k],jets_2[k])
-        res_mean[k]=swd['metric_means']
-        res_stds[k]=swd['metric_stds']
-    
-    means=np.reshape(res_mean,(-1))
-    stds=np.reshape(res_stds,(-1))
-
-    min_x=0.95*min(means)
-    max_x=1.05*max(means)
-    bins=np.arange(min_x,max_x,(max_x-min_x)/100)
-    plt.figure(figsize=(8,5))
-    n,bins,patches=plt.hist(means,bins=bins,density=True,cumulative=True,color='black',histtype='step')
-    t_68=bins[np.where(n>=0.68)[0][0]]
-    t_95=bins[np.where(n>=0.95)[0][0]]
-    t_99=bins[np.where(n>=0.99)[0][0]]
-    print(t_68)
-    plt.hlines(1,min_x,max_x,color='dimgrey',linestyle='dashed')
-    plt.hlines([0.68,0.95,0.99],min_x,max_x,color='darkgray',linestyle='dotted')
-    plt.vlines([t_68,t_95,t_99],0,1.1,color='dimgrey')
-    plt.fill_betweenx([0,1.1],t_68,t_95,color='powderblue',alpha=0.45,label=f'68\%: t={t_68}')
-    plt.fill_betweenx([0,1.1],t_95,t_99,color='powderblue',alpha=0.75,label=f'95\%: t={t_95}')
-    plt.fill_betweenx([0,1.1],t_99,max_x,color='powderblue',label=f'99\%: t={t_99}')
-    plt.legend(loc='upper right')
-    plt.yscale('log')
-    plt.xlim((min_x,max_x))
-    plt.ylim((0,1.1))
-    plt.xlabel(f'$t_{{SWD}}$')
-    plt.title(f'CDF for {name} particle features, 30 constituents')
-    #plt.savefig(f'plots_swd/swd_dist_{name}.png')
-    if jetclass==True:
-        plt.savefig(f'plots_swd/swd_dist_{name}_jetclass.svg')
-    else:
-        plt.savefig(f'plots_swd/swd_dist_{name}.svg')
+            plt.savefig(f'plots_swd/swd_dist_{name}.svg')
     return
 
 for v in data:
-    get_swd_dist(v,jetclass=True)
+    get_swd_dist(v)
 
 
 
