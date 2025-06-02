@@ -113,6 +113,11 @@ def parse_input():
         default="",
         help="model to continue training",
     )
+    
+    parser.add_argument("--learnrate_factor", type=float, default=0.5, help="after <patience> epochs without improvement, multiply learnrate by <learnrate_factor>")
+    parser.add_argument("--patience", type=int, default=2, help="after <patience> epochs without improvement, multiply learnrate by <learnrate_factor>")
+    parser.add_argument("--max_patience", type=int, default=5, help="stop training prematurely after <max_patience> epochs without improvement")
+
     args = parser.parse_args()
     return args
 
@@ -230,6 +235,8 @@ def plot_rocs(model, val_loader, tag):
 
     np.savez(os.path.join(args.log_dir, f"preds_{tag}.npz"), preds=preds, labels=labels)
     plt.close(fig)
+    
+    
 if __name__ == "__main__":
     args = parse_input()
     save_arguments(args)
@@ -248,7 +255,7 @@ if __name__ == "__main__":
 
     # construct model
     if args.model_path_in:
-        model = torch.load(os.path.join(args.model_path_in, args.model_name))
+        model = torch.load(args.model_path_in)
     else:
         model = JetTransformerClassifier(
             hidden_dim=args.hidden_dim,
@@ -264,20 +271,24 @@ if __name__ == "__main__":
     opt = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
-    scheduler = get_cos_scheduler(
-        num_epochs=args.num_epochs,
-        num_batches=len(train_loader),
-        optimizer=opt,
+    
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        opt,
+        mode="min",
+        factor=args.learnrate_factor,
+        patience=args.patience,
+        verbose=True,
     )
+
     scaler = torch.cuda.amp.GradScaler()
 
     logger = SummaryWriter(args.log_dir)
     global_step = 0
     loss_list = []
-    
         
     loss_list_epoch=[]
     val_list_epoch=[]
+    patience_counter = 0
     
     perplexity_list = []
     min_val_loss = np.inf
@@ -302,14 +313,13 @@ if __name__ == "__main__":
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()
-            scheduler.step()
 
             loss_list.append(loss.cpu().detach().numpy())
             loss_list_here.append(loss.cpu().detach().numpy())
             
             if (global_step + 1) % args.logging_steps == 0:
                 logger.add_scalar("Train/Loss", np.mean(loss_list), global_step)
-                logger.add_scalar("Train/LR", scheduler.get_last_lr()[0], global_step)
+                logger.add_scalar("Train/LR", opt.param_groups[0]["lr"], global_step)
                 loss_list = []
                 perplexity_list = []
 
@@ -334,16 +344,25 @@ if __name__ == "__main__":
                 val_loss.append(loss.cpu().detach().numpy())
             val_loss_here=val_loss
             val_loss = np.mean(val_loss)
+
+            scheduler.step(val_loss)  # <-- Update learning rate
+
             if val_loss < min_val_loss:
                 min_val_loss = val_loss
                 save_model(model, args.log_dir, "best")
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= args.max_patience:
+                    print(f"Early stopping triggered after {args.max_patience} epochs without improvement.")
+                    break
+
             logger.add_scalar("Val/Loss", np.mean(val_loss), global_step)
 
         save_model(model, args.log_dir, "last")
         save_opt_states(
             optimizer=opt, scheduler=scheduler, scaler=scaler, log_dir=args.log_dir
         )
-        
         
         print(len(loss_list_here))
         print(len(val_loss_here))
@@ -354,30 +373,6 @@ if __name__ == "__main__":
         val_list_epoch.append(mean_val)
     
     
-    
-    print(len(loss_list_epoch))
-    print(len(val_list_epoch))
-    history={'loss':loss_list_epoch,'val_loss':val_list_epoch}
-    
-    history_frame=pd.DataFrame(history)
-    history_frame.to_csv(os.path.join(args.log_dir, "history.txt"),index=False)
-    
-    
-    
     plot_rocs(model, val_loader, tag="last")
     model = load_model(os.path.join(args.log_dir, "model_best.pt"))
     plot_rocs(model, val_loader, tag="best")
-
-
-
-plt.close()
-plt.close()
-import matplotlib.pyplot as plt
-plt.plot(history_frame['loss'], label='Train Loss')
-plt.plot(history_frame['val_loss'], label='Val Loss')
-plt.xlabel('iter')
-plt.ylabel('Loss')
-plt.yscale('log')
-plt.legend()
-plt.savefig(os.path.join(args.log_dir, "history.pdf"))
-plt.close()
