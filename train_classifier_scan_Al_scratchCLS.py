@@ -143,7 +143,7 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5']
+sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5']
 
 bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 bg='discrete_1Mfromeach_403030_bg-N100-SR-Train.h5'
@@ -156,28 +156,35 @@ dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[25]
-dropout_list=[0.2]
+num_epochs_list=[20]
+dropout_list=[0.0,0.1]
 num_heads_list=[4]
-num_layers_list=[4]
+num_layers_list=[8,4]
 hidden_dim_list=[256]
 batch_size_list=[128]
 num_events_list=[1000000]
 num_const_list=[100]
-lr_list=[.00001]
+lr_list=[.0001]
 weight_decay_list=[1e-6]
-#num_events_val_max=500000
 
-run_number=9283
+fine_tune_list=['fine','freeze','scratch']
+use_sep_token_list=['false','true']
+use_hlf_list=['False','linear','mean']
+
+num_events_val_max=500000
+
+run_number=800
 tag_of_train='LHCO_CLS'
 model_name='model_best.pt'
 model_name_test='best'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 
-jet_last_emb_list=['False']
-scheduler_name_list=['reduce']
+jet_last_emb_list=['linear','mean']
+scheduler_name_list=['cos']
 
-for num_events in num_events_list:
+
+for fine_tune in fine_tune_list:
+
     '''
     if num_events<num_events_val_max:
         num_events_val=num_events
@@ -188,59 +195,62 @@ for num_events in num_events_list:
         for batch_size in batch_size_list:
             for num_epochs in num_epochs_list:
                 for scheduler_name in scheduler_name_list:
+                 for num_events in num_events_list:   
                     for jet_last_emb in jet_last_emb_list:
                         for num_layers in num_layers_list:
                             for dropout in dropout_list:
                                 for num_heads in num_heads_list:
                                     for lr in lr_list:
+
                                         for hidden_dim in hidden_dim_list:
-                                            
-                                            run_number=run_number+1
-                                            log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run_number)+'/Classification_AL_scratch_test_datav2/'+tag_of_train
-                                            for sig in sig_list:
-                                                #for bg in bg_list:
-                                                for weight_decay in weight_decay_list:
-
-
-
-
-
-
-                                                    sig_path=main_dir_discrete+sig
-                                                    bg_path=main_dir_discrete+bg
+                                            for use_hlf in use_hlf_list:
+                                                for use_sep_token in use_sep_token_list:
                                                 
-                                                
-                                                    name_sufix=random_string()
                                                     
-                                                    train_command='python train_classifier_AL_2_scratch_CLS.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)+' --weight_decay '+str(weight_decay)+' --num_layers '+str(num_layers)+' --jet_last_emb '+str(jet_last_emb)+' --scheduler_name '+str(scheduler_name)
-                                                    os.system(train_command)
-                                                    
-                                                    
-                                                    
-                                                    model_dir=log_dir+'_'+name_sufix
-                                                    model_name_test='best'
-                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')+' --model_name '+str(model_name_test)
-                                                    
-                                                    os.system(test_command)
-                                                    model_name_test='last'
-                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_last.npz')+' --model_name '+str(model_name_test)
-                                                    
-                                                    os.system(test_command)
-                                                    model_name_test='best_train'
-                                                    test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_best_train.npz')+' --model_name '+str(model_name_test)
-                                                    
-                                                    os.system(test_command)
-
-                                                    for epoch in range(num_epochs):
-
-                                                        model_name_test='epoch_'+str(epoch)
-                                                        print('testing model'+str(model_name_test))
-                                                        test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_epoch_'+str(epoch)+'.npz')+' --model_name '+str(model_name_test)
-                                                    
-                                                        os.system(test_command)
+                                                    run_number=run_number+1
+                                                    log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run_number)+'/Classification_AL_scratch_test_datav2/'+tag_of_train
+                                                    for sig in sig_list:
+                                                        #for bg in bg_list:
+                                                        for weight_decay in weight_decay_list:
 
 
+                                                            sig_path=main_dir_discrete+sig
+                                                            bg_path=main_dir_discrete+bg
+                                                        
+                                                        
+                                                            name_sufix=random_string()
+                                                            
+                                                            train_command='python train_classifier_AL_2_scratch_CLS.py   --log_dir '+str(log_dir)+' --bg '+str(bg_path)+' --sig '+str(sig_path)+' --num_const '+str(num_const)+' --num_epochs '+str(num_epochs)+'  --lr '+str(lr)+' --batch_size '+str(batch_size)+' --name_sufix '+str(name_sufix)+' --model_name '+str(model_name)+' --model_path_in '+str(model_path_in)+' --dropout '+str(dropout)+' --weight_decay '+str(weight_decay)+' --num_layers '+str(num_layers)+' --jet_last_emb '+str(jet_last_emb)+' --scheduler_name '+str(scheduler_name)+' --fun_model '+str(fine_tune)+' --use_sep_token '+str(use_sep_token)+' --use_hlf '+str(use_hlf)
+                                                            os.system(train_command)
 
-                                                    TestResults(dict_auc,model_dir,r_tresh)
-                                                    dict_auc.get('suffix').append(name_sufix)
+                                                            
+                                                            
+                                                            
+                                                            model_dir=log_dir+'_'+name_sufix
+                                                            model_name_test='best'
+                                                            test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test.npz')+' --model_name '+str(model_name_test)
+                                                            
+                                                            os.system(test_command)
+                                                           
+                                                            model_name_test='last'
+                                                            test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_last.npz')+' --model_name '+str(model_name_test)
+                                                            
+                                                            os.system(test_command)
+                                                            model_name_test='best_train'
+                                                            test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_best_train.npz')+' --model_name '+str(model_name_test)
+                                                            
+                                                            os.system(test_command)
+
+                                                            for epoch in range(num_epochs):
+
+                                                                model_name_test='epoch_'+str(epoch)
+                                                                print('testing model'+str(model_name_test))
+                                                                test_command='python test_classifier_AL.py --data_path_1 '+data_path_1+' --data_path_2 '+data_path_2+' --model_dir '+ model_dir +'  --num_events '+str(num_events_test)+' --num_const '+str(num_const)+' --pred_name '+str('predictions_test_epoch_'+str(epoch)+'.npz')+' --model_name '+str(model_name_test)
+                                                            
+                                                                os.system(test_command)
+                                                        
+
+
+                                                            #TestResults(dict_auc,model_dir,r_tresh)
+                                                            #dict_auc.get('suffix').append(name_sufix)
 

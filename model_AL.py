@@ -430,12 +430,16 @@ class JetTransformerALScratchCLS(Module):
         )
         self.out_norm = LayerNorm(hidden_dim)
         self.dropout_layer = Dropout(dropout)
-
+        self.part_style='False'
         # This linear layer reduces the jet embedding from the first-stage
         # (only if you had something like that originally).
-        # Or skip it if your old code didn't have it.
+        # Or skip it if your old code didn't have it.   
         self.jet_mlp = nn.Linear(hidden_dim, hidden_dim)
         
+        #ParTStyle transformations
+        self.gelu = nn.GELU()
+        self.out_norm_2 = LayerNorm(hidden_dim)
+        self.jet_mlp_last = nn.Linear(hidden_dim, hidden_dim)
         # ===============  (2) DOWNSTREAM CLS HEAD  ===============
         # A second Transformer (small) that processes [CLS2, Jet1_repr, Jet2_repr]
         encoder_layer2 = TransformerEncoderLayer(
@@ -472,11 +476,21 @@ class JetTransformerALScratchCLS(Module):
         if self.jet_last_emb=='True':
             jet1_repr = self.jet_mlp(jet1_repr)  # still [B, hidden_dim]
             jet2_repr = self.jet_mlp(jet2_repr)
-
+        
+        #ParT style
+        
+        if self.part_style=='True':
+            jet1_repr = self.gelu(jet1_repr)  
+            jet2_repr = self.gelu(jet2_repr)
+            jet1_repr = self.out_norm_2(jet1_repr)  
+            jet2_repr = self.out_norm_2(jet2_repr)
+            jet1_repr = self.jet_mlp_last(jet1_repr)  
+            jet2_repr = self.jet_mlp_last(jet2_repr)
         # ========== (B) DOWNSTREAM CLS-BASED TRANSFORMER ==========
         # Put the two jet embeddings side by side
         # shape = [B, 2, hidden_dim]
         combined_jets = torch.stack([jet1_repr, jet2_repr], dim=1)
+        #combined_jets = torch.cat([jet1_repr, jet2_repr], dim=1) 
         
         # Insert the second CLS token at the front
         B = jet1_repr.size(0)
@@ -484,7 +498,7 @@ class JetTransformerALScratchCLS(Module):
         
         # shape = [B, 3, hidden_dim]
         downstream_input = torch.cat([cls2, combined_jets], dim=1)
-        
+      
         # Pass through small downstream Transformer
         out2 = self.downstream_transformer(downstream_input)
         
@@ -533,6 +547,8 @@ class JetTransformerALScratchCLS(Module):
         # return emb.mean(dim=1)
         # We'll keep that. So each jet is [B, hidden_dim].
         jet_repr = emb.mean(dim=1)
+       
+       
         return jet_repr
 
     def loss(self, logits, labels):
@@ -543,6 +559,12 @@ class JetTransformerALScratchCLS(Module):
 class JetTransformerALFineTuneCLS(Module):
     def __init__(
         self,
+        original_model,
+        pretrain='scratch',
+      
+        use_sep_token='False',
+        use_hlf='linear',
+
         hidden_dim=256,
         num_layers=8,
         num_heads=4,
@@ -553,7 +575,10 @@ class JetTransformerALFineTuneCLS(Module):
         # Extra: second downstream Transformer settings
         downstream_num_layers=2,
         downstream_num_heads=2,
-        jet_last_emb='False'
+        jet_last_emb='linear',
+        hlf_dim=5,
+        num_layers_hlf=4,
+        hidden_dim_hlf=256
     ):
         super(JetTransformerALFineTuneCLS, self).__init__()
         
@@ -562,36 +587,104 @@ class JetTransformerALFineTuneCLS(Module):
         self.num_const = num_const
         self.hidden_dim = hidden_dim
         self.jet_last_emb = jet_last_emb
+        self.hlf_dim=hlf_dim
+        self.pretrain=pretrain
+       
+        self.use_sep_token=use_sep_token
+        self.use_hlf=use_hlf
+
+
         # ===============  (1) ORIGINAL / PRE-TRAINED PART  ===============
         # Same as your original: feature embeddings + N-layers of Transformer
-        self.feature_embeddings = nn.ModuleList(
-            [
-                Embedding(embedding_dim=hidden_dim, num_embeddings=num_bins[i])
-                for i in range(num_features)
-            ]
-        )
         
-        self.layers = nn.ModuleList(
-            [
-                TransformerEncoderLayer(
-                    d_model=hidden_dim,
-                    nhead=num_heads,
-                    dim_feedforward=hidden_dim,
-                    batch_first=True,
-                    norm_first=True,
-                    dropout=dropout,
-                )
-                for _ in range(num_layers)
-            ]
-        )
-        self.out_norm = LayerNorm(hidden_dim)
-        self.dropout_layer = Dropout(dropout)
+        if self.pretrain=='scratch':
+            print('training from scratch')
+            
+            self.feature_embeddings = nn.ModuleList(
+                [
+                    Embedding(embedding_dim=hidden_dim, num_embeddings=num_bins[i])
+                    for i in range(num_features)
+                ]
+            )
+            
+            self.layers = nn.ModuleList(
+                [
+                    TransformerEncoderLayer(
+                        d_model=hidden_dim,
+                        nhead=num_heads,
+                        dim_feedforward=hidden_dim,
+                        batch_first=True,
+                        norm_first=True,
+                        dropout=dropout,
+                    )
+                    for _ in range(num_layers)
+                ]
+            )
+            self.out_norm = LayerNorm(hidden_dim)
+            self.dropout_layer = Dropout(dropout)
+        elif self.pretrain=='fine' or self.pretrain=='freeze':
+        
+        
 
+            # Feature embeddings are inherited from the original model
+            self.feature_embeddings = original_model.feature_embeddings
+            # Transformer layers are inherited from the original model
+            self.layers = original_model.layers
+            # Output normalization and dropout are inherited from the original model
+            self.out_norm = original_model.out_norm
+            self.dropout_layer = original_model.dropout
+            #self.dropout_layer = Dropout(dropout)
+
+      
         # This linear layer reduces the jet embedding from the first-stage
         # (only if you had something like that originally).
-        # Or skip it if your old code didn't have it.
+        # Or skip it if your old code didn't have it.   
         self.jet_mlp = nn.Linear(hidden_dim, hidden_dim)
         
+        #ParTStyle transformations
+        self.gelu = nn.GELU()
+        self.out_norm_2 = LayerNorm(hidden_dim)
+        self.jet_mlp_last = nn.Linear(hidden_dim, hidden_dim)
+        
+
+
+        #=========HIGH LEVEL FEATURES=====================#
+        self.hlf_mlp1 = nn.Linear(self.hlf_dim, hidden_dim_hlf)
+        # build transformer layers
+        transformer_layer = TransformerEncoderLayer(d_model=hidden_dim_hlf, nhead=2,dropout=.5,activation='gelu',batch_first=True,
+            norm_first=True)
+        self.hlf_transformer = TransformerEncoder(transformer_layer, num_layers=num_layers_hlf)
+        self.hlf_out_norm = LayerNorm(hidden_dim_hlf)
+        
+        self.hlf_mlp2 = nn.Linear(hidden_dim_hlf, hidden_dim)
+
+
+        self.mlp_scale_1 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        
+        self.mlp_shift_1 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        
+        self.mlp_scale_2 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        
+        self.mlp_shift_2 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+
+
+
         # ===============  (2) DOWNSTREAM CLS HEAD  ===============
         # A second Transformer (small) that processes [CLS2, Jet1_repr, Jet2_repr]
         encoder_layer2 = TransformerEncoderLayer(
@@ -599,6 +692,7 @@ class JetTransformerALFineTuneCLS(Module):
             nhead=downstream_num_heads,
             dim_feedforward=hidden_dim,
             dropout=dropout,
+            activation='gelu',
             batch_first=True,
             norm_first=True
         )
@@ -606,14 +700,14 @@ class JetTransformerALFineTuneCLS(Module):
         
         # A new CLS token for the downstream classification
         self.cls_token2 = nn.Parameter(torch.randn(1, 1, hidden_dim))
-        
+        self.sep_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
         # Final classification
         self.final_classifier = nn.Linear(hidden_dim, 1)
         
         # Criterion
         self.criterion = nn.BCEWithLogitsLoss()
 
-    def forward(self, jet1, jet2, padding_mask1, padding_mask2, labels=None):
+    def forward(self, jet1, jet2, padding_mask1, padding_mask2,hlf, labels=None):
         """
         (A) Use the existing Transformer (unchanged) to get a single vector per jet
         (B) Combine those vectors in a second small Transformer with a new [CLS2] token
@@ -625,14 +719,148 @@ class JetTransformerALFineTuneCLS(Module):
         
         # (Optional) pass through old MLP or standard dropout, etc. from your code
         
-        if self.jet_last_emb=='True':
-            jet1_repr = self.jet_mlp(jet1_repr)  # still [B, hidden_dim]
+        if self.jet_last_emb=='linear':
+        
+            #Similar to what ParT does
+            jet1_repr = self.jet_mlp(jet1_repr)  
             jet2_repr = self.jet_mlp(jet2_repr)
+           
+            jet1_repr = self.gelu(jet1_repr)  
+            jet2_repr = self.gelu(jet2_repr)
 
+            jet1_repr = self.out_norm_2(jet1_repr)  
+            jet2_repr = self.out_norm_2(jet2_repr)
+
+            jet1_repr = self.jet_mlp_last(jet1_repr)  
+            jet2_repr = self.jet_mlp_last(jet2_repr)
+        
+
+
+        #===========HIGH LEVEL FEATURES=========#
+        #####HLF stage
+
+        #print(hlf.size())
+        if self.use_hlf=='linear' or self.use_hlf=='mean':
+            hlf_1 = hlf[:, 0]  # Shape will be [128, 5]
+            hlf_2 = hlf[:, 1]
+            #print(hlf_1.size())
+            
+            #hlf = hlf.view(hlf.shape[0], -1)
+
+    
+            #print(hlf)
+            #print(hlf.shape)
+        
+            hlf_1=self.hlf_mlp1(hlf_1)
+        
+            hlf_1 = torch.nn.LeakyReLU(negative_slope=0.01)(hlf_1)
+            hlf_1 = self.hlf_transformer(hlf_1) # Transformer
+
+            if self.use_hlf=='linear':
+                hlf_1 = self.hlf_out_norm(hlf_1)
+                hlf_1 = self.hlf_mlp2(hlf_1)
+                hlf_1_repr = torch.nn.LeakyReLU(negative_slope=0.01)(hlf_1)
+                
+            elif self.use_hlf=='mean':
+                hlf_1_repr =hlf_1.mean(dim=0)
+            
+
+
+            hlf_2=self.hlf_mlp1(hlf_2)
+        
+            hlf_2 = nn.GELU()(hlf_2)
+            hlf_2 = self.hlf_transformer(hlf_2) # Transformer
+
+
+            if self.use_hlf=='linear':
+                
+                hlf_2 = self.hlf_out_norm(hlf_2)
+                hlf_2 = self.hlf_mlp2(hlf_2)
+                hlf_2_repr = nn.GELU()(hlf_2)
+                
+            elif self.use_hlf=='mean':
+                hlf_2_repr =hlf_1.mean(dim=0)
+            
+        
+
+            #print(hlf_1_repr.size())
+            #print(hlf_2_repr.size())
+            
+            scale_factor_1 = self.mlp_scale_1(hlf_1_repr)  # Shape: [128, hidden_dim]
+            shift_value_1 = self.mlp_shift_1(hlf_1_repr)   # Shape: [128, hidden_dim]
+            
+            #exit()
+            if self.jet_last_emb=='linear' and self.use_hlf=='linear':
+                
+                scale_factor_1 = scale_factor_1.unsqueeze(1)   # Shape: [128, 1, 256]
+                shift_value_1 = shift_value_1.unsqueeze(1) 
+    
+
+            scaled_and_shifted_jets1 = jet1_repr * scale_factor_1 + shift_value_1
+         
+            # Scale and shift for jet 2
+            scale_factor_2 = self.mlp_scale_2(hlf_2_repr)  # Shape: [128, hidden_dim]
+            shift_value_2 = self.mlp_shift_2(hlf_2_repr)   # Shape: [128, hidden_dim]
+            if self.jet_last_emb=='linear' and self.use_hlf=='linear':
+                scale_factor_2 = scale_factor_2.unsqueeze(1)   # Shape: [128, 1, 256]
+                shift_value_2 = shift_value_2.unsqueeze(1)
+            
+            scaled_and_shifted_jets2 = jet2_repr * scale_factor_2 + shift_value_2
+            
+            
+            if self.use_sep_token=='True':
+                B = jet1_repr.size(0)
+                sep_token = self.sep_token.expand(B, -1,-1)
+                if self.jet_last_emb=='mean':
+                    combined_jets = torch.stack([scaled_and_shifted_jets1, sep_token.squeeze(1),scaled_and_shifted_jets2], dim=1)
+                else:
+                    combined_jets = torch.cat([scaled_and_shifted_jets1,sep_token, scaled_and_shifted_jets2], dim=1)
+            else:
+                if self.jet_last_emb=='mean':
+                    combined_jets = torch.stack([scaled_and_shifted_jets1, scaled_and_shifted_jets2], dim=1)
+                else:
+                    combined_jets = torch.cat([scaled_and_shifted_jets1, scaled_and_shifted_jets2], dim=1)
+
+
+        if self.use_hlf=='False':
+            if self.use_sep_token=='True':
+                B = jet1_repr.size(0)
+                sep_token = self.sep_token.expand(B, -1, -1)
+                if self.jet_last_emb=='mean':
+                    
+                    combined_jets = torch.stack([jet1_repr, sep_token.squeeze(1),jet2_repr], dim=1)
+                else:
+                    combined_jets = torch.cat([jet1_repr, sep_token,jet2_repr], dim=1)
+            else:
+                if self.jet_last_emb=='mean':
+                    combined_jets = torch.stack([jet1_repr, jet2_repr], dim=1)
+                else:
+                    combined_jets = torch.cat([jet1_repr, jet2_repr], dim=1)
+            
+
+        #combined_jets = torch.cat([scaled_and_shifted_jets1, sep_token,scaled_and_shifted_jets2], dim=1)
+        
+        '''
+
+        hlf_1_repr=hlf_1_repr.view(hlf.shape[0], 1, 256)
+        hlf_2_repr=hlf_2_repr.view(hlf.shape[0], 1, 256)
+        #print(hlf_1_repr.size())
+        #print(jet1_repr.size())
+        
         # ========== (B) DOWNSTREAM CLS-BASED TRANSFORMER ==========
         # Put the two jet embeddings side by side
         # shape = [B, 2, hidden_dim]
-        combined_jets = torch.stack([jet1_repr, jet2_repr], dim=1)
+        #combined_jets = torch.stack([jet1_repr, jet2_repr], dim=1)
+        
+        
+        #combined_jets = torch.cat([jet1_repr,hlf_1_repr,SEP_token, jet2_repr,hlf_2_repr], dim=1)
+        B = jet1_repr.size(0)
+        sep_token = self.sep_token.expand(B, -1, -1)
+        combined_jets = torch.cat([jet1_repr,sep_token, jet2_repr], dim=1)
+        '''
+        #combined_jets = torch.cat([jet1_repr,hlf_1_repr, jet2_repr,hlf_2_repr], dim=1)
+        #combined_jets = torch.cat([jet1_repr,sep_token, jet2_repr], dim=1)
+        #print(combined_jets.size())
         
         # Insert the second CLS token at the front
         B = jet1_repr.size(0)
@@ -684,11 +912,13 @@ class JetTransformerALFineTuneCLS(Module):
         # Normalization + dropout
         emb = self.out_norm(emb)
         emb = self.dropout_layer(emb)
-        #jet_repr=emb
+        jet_repr=emb
         # Suppose the old code ended with:
         # return emb.mean(dim=1)
         # We'll keep that. So each jet is [B, hidden_dim].
-        jet_repr = emb.mean(dim=1)
+        #jet_repr = emb.mean(dim=1)
+        if self.jet_last_emb=='mean':
+            jet_repr = jet_repr.mean(dim=1)
         return jet_repr
 
     def loss(self, logits, labels):

@@ -255,6 +255,22 @@ def PlotPerEpoch(model_dir,frame_per_epoch,num_signal):
 
     return
 
+def BestPerEpoch(frame_per_epoch):
+    
+    
+    
+    auc_abs_best=frame_per_epoch.sort_values(by=['auc'],ascending=False).reset_index()['auc'][0]
+
+    epoch_best_auc=frame_per_epoch.sort_values(by=['auc'],ascending=False).reset_index()['epoch'][0]
+
+    max_sic_abs_best=frame_per_epoch.sort_values(by=['max_sic'],ascending=False).reset_index()['max_sic'][0]
+    epoch_best_max_sic_best=frame_per_epoch.sort_values(by=['max_sic'],ascending=False).reset_index()['epoch'][0]
+
+    
+    
+
+    return auc_abs_best,epoch_best_auc,max_sic_abs_best,epoch_best_max_sic_best
+
 def TestPerEpoch(model_dir):
 
     lines=read_file(model_dir+'/arguments.txt')
@@ -264,7 +280,7 @@ def TestPerEpoch(model_dir):
     print(num_signal)
     
     print(num_epochs)
-
+    
     per_epoch_dict={'epoch':[],'auc':[],'max_sic':[],'acc':[]}
     for epoch in range(num_epochs):
 
@@ -278,13 +294,23 @@ def TestPerEpoch(model_dir):
         per_epoch_dict.get('max_sic').append(max_sic_epoch)
         per_epoch_dict.get('acc').append(acc_epoch)
         print('whatup')
+        print(per_epoch_dict)
+    
+
+      
     print(per_epoch_dict)
-  
+    
     frame_per_epoch=pd.DataFrame(per_epoch_dict)
-
+    frame_per_epoch.to_csv(model_dir+'/frame_per_epoch.txt',index=False)
+    print(frame_per_epoch)
+    
     PlotPerEpoch(model_dir,frame_per_epoch,num_signal)
-
-    return num_signal
+    
+    auc_abs_best,epoch_best_auc,max_sic_abs_best,epoch_best_max_sic_best=BestPerEpoch(frame_per_epoch)
+  
+    print(auc_abs_best)
+    
+    return num_signal,auc_abs_best,epoch_best_auc,max_sic_abs_best,epoch_best_max_sic_best
 
 #main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 main_dir_discrete='LHCO_discrete/'
@@ -308,11 +334,12 @@ model_types={#'scratch LL+HLF':'Classification_AL_scratch_wHLF_test_datav2_10/',
              # 'finetuned LL':'Classification_AL_finetune_AVGpoolhead_test_datav2_5/'
               
               }
-all_runs={'RUN':[],'auc_best':[],'max_sic_best':[],'auc_last':[],'max_sic_last':[],'auc_best_train':[],'max_sic_best_train':[]}
+all_runs_1000={'RUN':[],'auc_best':[],'max_sic_best':[],'auc_last':[],'max_sic_last':[],'auc_best_train':[],'max_sic_best_train':[],'auc_absbest':[],'max_sic_absbest':[],'epoch_auc_best':[],'epoch_max_sic_best':[]}
+all_runs_2000={'RUN':[],'auc_best':[],'max_sic_best':[],'auc_last':[],'max_sic_last':[],'auc_best_train':[],'max_sic_best_train':[],'auc_absbest':[],'max_sic_absbest':[],'epoch_auc_best':[],'epoch_max_sic_best':[]}
 rocs={'RUN':[],'fpr_best':[],'tpr_best':[],'fpr_last':[],'tpr_last':[]}
 test_again='False'
-first_run=9284
-last_run=9285
+first_run=601
+last_run=6669
 for run in range(first_run,last_run):
 
     main_result_dir='//net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run)+'/'
@@ -334,7 +361,9 @@ for run in range(first_run,last_run):
                     if test_again=='True':
                         TestAgain(model_dir)
 
-                    num_signal=TestPerEpoch(model_dir)
+                   
+                    num_signal,auc_abs_best,epoch_best_auc,max_sic_abs_best,epoch_best_max_sic_best=TestPerEpoch(model_dir)
+                   
                     num_events_train,auc_best,max_sic_best,auc_last,max_sic_last,fpr_best,tpr_best,fpr_last,tpr_last,auc_score_best_train,max_sic_best_train,fpr_best_train,tpr_best_train=TestResults(dict_auc,model_dir,r_tresh)
                     os.system('cp '+model_dir+'/arguments.txt '+out_result_dir+'/arguments_'+str(num_events_train)+'.txt')
                     os.system('cp '+model_dir+'/auc.txt '+out_result_dir+'/auc_'+str(num_events_train)+'.txt')
@@ -344,23 +373,49 @@ for run in range(first_run,last_run):
                     os.system('cp '+model_dir+'/AUC_perepoch_'+str(num_signal)+'.png '+out_result_dir+'/AUC_perepoch_'+str(num_signal)+'.png')
                     
                     dict_auc.get('result').append(result)
-
+                    print(num_events_train)
+              
                     if num_events_train==1000:
-                        all_runs.get('RUN').append(run)
-                        all_runs.get('auc_best').append(auc_best)
-                        all_runs.get('max_sic_best').append(max_sic_best)
-                        all_runs.get('auc_last').append(auc_last)
-                        all_runs.get('max_sic_last').append(max_sic_last)
+                        all_runs_1000.get('RUN').append(run)
+                        all_runs_1000.get('auc_best').append(auc_best)
+                        all_runs_1000.get('max_sic_best').append(max_sic_best)
+                        all_runs_1000.get('auc_last').append(auc_last)
+                        all_runs_1000.get('max_sic_last').append(max_sic_last)
 
-                        all_runs.get('auc_best_train').append(auc_score_best_train)
-                        all_runs.get('max_sic_best_train').append(max_sic_best_train)
+                        all_runs_1000.get('auc_best_train').append(auc_score_best_train)
+                        all_runs_1000.get('max_sic_best_train').append(max_sic_best_train)
 
+                        all_runs_1000.get('auc_absbest').append(auc_abs_best)
+                        all_runs_1000.get('max_sic_absbest').append(max_sic_abs_best)
+
+                        all_runs_1000.get('epoch_auc_best').append(epoch_best_auc)
+                        all_runs_1000.get('epoch_max_sic_best').append(epoch_best_max_sic_best)
+
+
+                        
 
                         rocs.get('RUN').append(run)
                         rocs.get('fpr_best').append(fpr_best)
                         rocs.get('tpr_best').append(tpr_best)
                         rocs.get('fpr_last').append(fpr_last)
                         rocs.get('tpr_last').append(tpr_last)
+
+                    if num_events_train==2000:
+                        all_runs_2000.get('RUN').append(run)
+                        all_runs_2000.get('auc_best').append(auc_best)
+                        all_runs_2000.get('max_sic_best').append(max_sic_best)
+                        all_runs_2000.get('auc_last').append(auc_last)
+                        all_runs_2000.get('max_sic_last').append(max_sic_last)
+
+                        all_runs_2000.get('auc_best_train').append(auc_score_best_train)
+                        all_runs_2000.get('max_sic_best_train').append(max_sic_best_train)
+
+                        all_runs_2000.get('auc_absbest').append(auc_abs_best)
+                        all_runs_2000.get('max_sic_absbest').append(max_sic_abs_best)
+
+                        all_runs_2000.get('epoch_auc_best').append(epoch_best_auc)
+                        all_runs_2000.get('epoch_max_sic_best').append(epoch_best_max_sic_best)
+                    
           
                     #except:
                     #    continue
@@ -421,12 +476,19 @@ for run in range(first_run,last_run):
         plt.close()
 
 
+print('creating frames')
 
-all_runs_frame=pd.DataFrame(all_runs)
-all_runs_frame.to_csv('./AnomalyDetectionResults/IdealizedClasifitaction/results_RUNS_'+str(first_run)+'_'+str(last_run)+'.txt',index=False)
+all_runs_frame_1000=pd.DataFrame(all_runs_1000)
+print(all_runs_1000)
+print(all_runs_frame_1000)
+all_runs_frame_1000.to_csv('./AnomalyDetectionResults/IdealizedClasifitaction/results_1000sij_RUNS_'+str(first_run)+'_'+str(last_run)+'.txt',index=False)
+all_runs_frame_2000=pd.DataFrame(all_runs_2000)
+all_runs_frame_2000.to_csv('./AnomalyDetectionResults/IdealizedClasifitaction/results_2000sij_RUNS_'+str(first_run)+'_'+str(last_run)+'.txt',index=False)
+print('frames created')
+exit()
 rocs_frame=pd.DataFrame(rocs)
 
-top_runs=all_runs_frame.nlargest(8, 'max_sic_last')
+top_runs=all_runs_frame_1000.nlargest(5, 'max_sic_absbest')
 
 print(top_runs)
 
@@ -472,3 +534,4 @@ plt.legend()
 plt.title(plot_title)
 plt.savefig('./AnomalyDetectionResults/IdealizedClasifitaction/roc_curve_RUNS_'+str(first_run)+'_'+str(last_run)+'_SIC_last.png')
 plt.close()
+

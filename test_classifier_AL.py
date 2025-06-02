@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from tqdm import tqdm
 import os
 import pandas as pd
-
+import h5py
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
@@ -90,7 +90,7 @@ def preprocess_dataframe(
         bins = torch.tensor(bins)
     print(f"Shapes: {x.shape=} {padding_mask.shape=} {bins.shape=}")
     return x, padding_mask, bins
-
+'''
 def load_data(file):
 
     jet1 = pd.read_hdf(file, key="discretized_jet1", stop=args.num_events)
@@ -110,9 +110,29 @@ def load_data(file):
 
     
     return jet1,jet2
+'''
+def load_data(file):
 
+    jet1 = pd.read_hdf(file, key="discretized_jet1", stop=args.num_events)
+    jet1 = jet1.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+    jet1 = jet1.reshape(jet1.shape[0], -1, 3)
 
+    jet1 = np.delete(jet1, np.where(jet1[:, 0, 0] == 0)[0], axis=0)
+    jet1[jet1 == -1] = 0
+    
+    jet2 = pd.read_hdf(file, key="discretized_jet2", stop=args.num_events)
+    jet2 = jet2.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+    jet2 = jet2.reshape(jet2.shape[0], -1, 3)
 
+    jet2 = np.delete(jet2, np.where(jet2[:, 0, 0] == 0)[0], axis=0)
+    jet2[jet2 == -1] = 0
+    
+    f=h5py.File(file, 'r')
+    jet_coords=f.get('jet_coords')[:args.num_events,:,:]
+    
+    return jet1,jet2,jet_coords
+
+'''
 def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     """
     Creates a DataLoader for training or validation.
@@ -177,8 +197,85 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     )
 
     return test_loader
+'''
 
 
+def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
+    """
+    Creates a DataLoader for training or validation.
+    
+    Args:
+        jet1_data (numpy.ndarray or torch.Tensor): Jet 1 data.
+        jet2_data (numpy.ndarray or torch.Tensor): Jet 2 data.
+        padding_mask1 (numpy.ndarray or torch.Tensor): Padding mask for Jet 1.
+        padding_mask2 (numpy.ndarray or torch.Tensor): Padding mask for Jet 2.
+        labels (numpy.ndarray or torch.Tensor): Labels for binary classification.
+        batch_size (int): The size of each batch (default is 32).
+        shuffle (bool): Whether to shuffle the data (default is True).
+        num_workers (int): The number of workers to load data (default is 4).
+    
+    Returns:
+        DataLoader: The DataLoader object for training or validation.
+    """
+    
+    
+    bg_jet1,bg_jet2,bg_jet_coords = load_data(bgf)
+    sig_jet1,sig_jet2,sg_jet_coords = load_data(sigf)
+
+    print(f"Using bg {bg_jet1.shape} from {bg_jet1} and sig {sig_jet1.shape} from {sig_jet1}")
+
+    jet1_data = np.concatenate((bg_jet1, sig_jet1), 0)
+    jet2_data = np.concatenate((bg_jet2, sig_jet2), 0)
+    jet_coords_data=np.concatenate((bg_jet_coords, sg_jet_coords), 0)
+    
+    label = np.append(np.zeros(len(bg_jet1)), np.ones(len(sig_jet1)))
+    
+    padding_mask1 = jet1_data[:, :, 0] != 0
+    padding_mask2 = jet2_data[:, :, 0] != 0
+
+
+
+
+
+    #idx = np.random.permutation(len(label))
+    
+    jet1 = torch.tensor(jet1_data, dtype=torch.int64)
+    jet2 = torch.tensor(jet2_data, dtype=torch.int64)
+    padding_mask1 = torch.tensor(padding_mask1, dtype=torch.bool)
+    padding_mask2 = torch.tensor(padding_mask2, dtype=torch.bool)
+    label = torch.tensor(label, dtype=torch.float32)  # For BCEWithLogitsLoss, labels should be float32
+    jet_coords = torch.tensor(jet_coords_data, dtype=torch.float32)
+    
+    print('jet1')
+    print(jet1.shape)
+    print('jet2')
+    print(jet2.shape)
+    print('padding_mask1')
+    print(padding_mask1.shape)
+    print('padding_mask2')
+    print(padding_mask2.shape)
+    print('jet_coords')
+    print(jet_coords.shape)
+    
+    
+    
+    test_set = TensorDataset(
+        jet1,
+        padding_mask1,
+        jet2,
+        padding_mask2,
+        jet_coords,
+        label,
+    )
+    
+
+    test_loader = DataLoader(
+        test_set,
+        batch_size=args.batch_size,
+        shuffle=shuffle,
+    )
+
+    return test_loader
 
 
 def load_model(name):
@@ -202,7 +299,7 @@ def parse_input():
     parser.add_argument("--reverse", action='store_true', help="Whether to reverse pt order")
     parser.add_argument("--model_name", type=str, default='best', help="model name")
     parser.add_argument("--pred_name", type=str, default='predictions_test.npz', help="predicitons name")
-    
+    parser.add_argument("--use_hlf", type=str, default='False', help="use hlf info")
     args = parser.parse_args()
     return args
 
@@ -283,6 +380,16 @@ if __name__ == '__main__':
     test_loader = get_dataloader(args.data_path_1,args.data_path_2)
     # construct model
     model = load_model(args.model_name)
+
+    if args.model_name=='ensemble':
+
+        model_1 = load_model('best')
+        model_2 = load_model('last')
+        model_3 = load_model('best_train')
+        model_4 = load_model('epoch_3')
+        model_5 = load_model('epoch_8')
+        model_list=[model_1,model_2,model_3,model_4,model_5]
+
     print("Loaded model")
     model.to(device)
     model.eval()
@@ -292,33 +399,73 @@ if __name__ == '__main__':
     label_list = []
     logits_list=[]
     min_val_loss = np.inf
-    with torch.no_grad():
-        for jet1, padding_mask1,jet2, padding_mask2, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
-            label_list.append(label.detach().numpy())
+
+    if args.model_name == 'ensemble':
+        
+        for model in model_list:
+
+
+            with torch.no_grad():
+                for jet1, padding_mask1,jet2, padding_mask2, hlf,label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
+                    label_list.append(label.detach().numpy())
+                
+                    jet1 = jet1.to(device)
+                    padding_mask1 = padding_mask1.to(device)
+                
+                    jet2 = jet2.to(device)
+                    padding_mask2 = padding_mask2.to(device)
+                
+                    label = label.to(device)
+                    hlf=hlf.to(device)
+                    #with torch.no_grad():
+                    #with torch.cuda.amp.autocast():
+                    logits = model(jet1, jet2, padding_mask1, padding_mask2,hlf)
+                    predictions = torch.sigmoid(logits)
+                    loss = model.loss(logits, label.view(-1, 1))
+
+                    loss_list.append(loss.cpu().detach().numpy())
+                    prediction_list.append(predictions.cpu().detach().numpy())
+                    logits_list.append(logits.cpu().detach().numpy())
+
+            predictions = np.concatenate(prediction_list, axis=0)
+            logits_all=np.concatenate(logits_list, axis=0)
+            label_all = np.concatenate(label_list, axis=0)
+
+            predictions=predictions[:,0]
+
+
             
-            jet1 = jet1.to(device)
-            padding_mask1 = padding_mask1.to(device)
-            
-            jet2 = jet2.to(device)
-            padding_mask2 = padding_mask2.to(device)
-            
-            label = label.to(device)
 
-            #with torch.no_grad():
-            #with torch.cuda.amp.autocast():
-            logits = model(jet1, jet2, padding_mask1, padding_mask2)
-            predictions = torch.sigmoid(logits)
-            loss = model.loss(logits, label.view(-1, 1))
+    else:
+        with torch.no_grad():
+            for jet1, padding_mask1,jet2, padding_mask2,hlf, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
+                label_list.append(label.detach().numpy())
+                
+                jet1 = jet1.to(device)
+                padding_mask1 = padding_mask1.to(device)
+                
+                jet2 = jet2.to(device)
+                padding_mask2 = padding_mask2.to(device)
+                
+                label = label.to(device)
+                hlf=hlf.to(device)
+                #with torch.no_grad():
+                #with torch.cuda.amp.autocast():
+                logits = model(jet1, jet2, padding_mask1, padding_mask2,hlf)
+                predictions = torch.sigmoid(logits)
+                loss = model.loss(logits, label.view(-1, 1))
 
-            loss_list.append(loss.cpu().detach().numpy())
-            prediction_list.append(predictions.cpu().detach().numpy())
-            logits_list.append(logits.cpu().detach().numpy())
+                loss_list.append(loss.cpu().detach().numpy())
+                prediction_list.append(predictions.cpu().detach().numpy())
+                logits_list.append(logits.cpu().detach().numpy())
 
-    predictions = np.concatenate(prediction_list, axis=0)
-    logits_all=np.concatenate(logits_list, axis=0)
-    label_all = np.concatenate(label_list, axis=0)
+        predictions = np.concatenate(prediction_list, axis=0)
+        logits_all=np.concatenate(logits_list, axis=0)
+        label_all = np.concatenate(label_list, axis=0)
 
-    predictions=predictions[:,0]
+        predictions=predictions[:,0]
+
+
 
     auc_score=roc_auc_score(label_all, predictions)
     print(auc_score)

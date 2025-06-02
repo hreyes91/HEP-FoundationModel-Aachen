@@ -4,14 +4,14 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from argparse import ArgumentParser
 
-from model_AL import JetTransformerALScratchCLS
+from model_AL import JetTransformerALScratchCLS,JetTransformerALFineTuneCLS
 
 
 
 from tqdm import tqdm
 import pandas as pd
 import os
-
+import h5py
 from sklearn.metrics import roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
 
@@ -109,7 +109,21 @@ def parse_input():
 
     
     parser.add_argument(
-        "--jet_last_emb", type=str, default='False', help="jet last emb"
+        "--jet_last_emb", type=str, default='linear', help="jet last emb. Options=[mean,linear]"
+    )
+
+    parser.add_argument(
+        "--use_hlf", type=str, default='linear', help="use hlf. Options=[False,linear,mean]"
+    )
+
+    parser.add_argument(
+        "--use_sep_token", type=str, default='False', help="sep token between jets. Options=[True,False]"
+    )
+
+
+
+    parser.add_argument(
+        "--fun_model", type=str, default='scratch', help="type of fine-tunning options: [scratch,fine,freeze]"
     )
 
     parser.add_argument(
@@ -127,7 +141,7 @@ def parse_input():
     )
     args = parser.parse_args()
     return args
-
+'''
 def load_data(file):
 
     jet1 = pd.read_hdf(file, key="discretized_jet1")
@@ -147,9 +161,29 @@ def load_data(file):
 
     
     return jet1,jet2
+'''
 
+def load_data(file):
 
+    jet1 = pd.read_hdf(file, key="discretized_jet1")
+    jet1 = jet1.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+    jet1 = jet1.reshape(jet1.shape[0], -1, 3)
 
+    jet1 = np.delete(jet1, np.where(jet1[:, 0, 0] == 0)[0], axis=0)
+    jet1[jet1 == -1] = 0
+    
+    jet2 = pd.read_hdf(file, key="discretized_jet2")
+    jet2 = jet2.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
+    jet2 = jet2.reshape(jet2.shape[0], -1, 3)
+
+    jet2 = np.delete(jet2, np.where(jet2[:, 0, 0] == 0)[0], axis=0)
+    jet2[jet2 == -1] = 0
+    
+    f=h5py.File(file, 'r')
+  
+    jet_coords=f.get('jet_coords')[:,:,:]
+    
+    return jet1,jet2,jet_coords
 def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     """
     Creates a DataLoader for training or validation.
@@ -169,13 +203,14 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     """
     
     
-    bg_jet1,bg_jet2 = load_data(bgf)
-    sig_jet1,sig_jet2 = load_data(sigf)
+    bg_jet1,bg_jet2,bg_jet_coords = load_data(bgf)
+    sig_jet1,sig_jet2,sg_jet_coords =  load_data(sigf)
 
     print(f"Using bg {bg_jet1.shape} from {bgf} and sig {sig_jet1.shape} from {sigf}")
 
     jet1_data = np.concatenate((bg_jet1, sig_jet1), 0)
     jet2_data = np.concatenate((bg_jet2, sig_jet2), 0)
+    jet_coords_data=np.concatenate((bg_jet_coords, sg_jet_coords), 0)
     
     
     label = np.append(np.zeros(len(bg_jet1)), np.ones(len(sig_jet1)))
@@ -191,9 +226,11 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
     
     jet1 = torch.tensor(jet1_data[idx], dtype=torch.int64)
     jet2 = torch.tensor(jet2_data[idx], dtype=torch.int64)
+    
     padding_mask1 = torch.tensor(padding_mask1[idx], dtype=torch.bool)
     padding_mask2 = torch.tensor(padding_mask2[idx], dtype=torch.bool)
     
+    jet_coords = torch.tensor(jet_coords_data[idx], dtype=torch.float32)
  
     label = torch.tensor(label[idx], dtype=torch.int64)  # For BCEWithLogitsLoss, labels should be float32
     
@@ -205,8 +242,12 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
         jet2[: int(0.8 * len(label))],
         padding_mask2[: int(0.8 * len(label))],
         
+        jet_coords[: int(0.8 * len(label))],
         
         label[: int(0.8 * len(label))],
+        
+        
+        
     )
     
     
@@ -215,6 +256,8 @@ def get_dataloader(bgf,sigf, batch_size=32, shuffle=False, num_workers=4):
         padding_mask1[int(0.8 * len(label)) :],
         jet2[int(0.8 * len(label)) :],
         padding_mask2[int(0.8 * len(label)) :],
+        
+        jet_coords[int(0.8 * len(label)) :],
         
         
         label[int(0.8 * len(label)) :],
@@ -245,7 +288,7 @@ def plot_rocs(model, val_loader, tag):
         progress_bar =tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=True)
 
-        for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(val_loader):
+        for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, hlf,label) in enumerate(val_loader):
             
             jet1 = jet1.to(device)
             padding_mask1 = padding_mask1.to(device)
@@ -255,16 +298,16 @@ def plot_rocs(model, val_loader, tag):
             
             
             label = label.to(device)
-
+            hlf=hlf.to(device)
             logits = model(
-                                jet1, jet2, padding_mask1, padding_mask2
+                                jet1, jet2, padding_mask1, padding_mask2,hlf
                 )
       
             
             loss = model.loss(logits, label.view(-1, 1).float())
 
 
-            logits = model(jet1, jet2, padding_mask1, padding_mask2)
+            logits = model(jet1, jet2, padding_mask1, padding_mask2,hlf)
                 
             preds.append(logits.cpu().numpy())
             labels.append(label.cpu().numpy())
@@ -431,20 +474,28 @@ if __name__ == "__main__":
     #original_model = torch.load(os.path.join(args.model_path_in, args.model_name))
     original_model = torch.load(os.path.join(args.model_path_in, args.model_name), map_location=device)
     
-    
-    # construct model
-    model = JetTransformerALScratchCLS(
-        hidden_dim=args.hidden_dim,
 
-        num_layers=args.num_layers,
-        num_heads=args.num_heads,
-        num_features=3,
-        num_bins=(41, 31, 31),
-        dropout=args.dropout,
-        num_const=args.num_const,
-        jet_last_emb=args.jet_last_emb
-        
-        )
+    
+    model = JetTransformerALFineTuneCLS(
+            original_model,
+            pretrain=args.fun_model,
+      
+            use_sep_token=args.use_sep_token,
+            use_hlf=args.use_hlf,
+            hidden_dim=args.hidden_dim,
+
+            num_layers=args.num_layers,
+            num_heads=args.num_heads,
+            num_features=3,
+            num_bins=(41, 31, 31),
+            dropout=args.dropout,
+            num_const=args.num_const,
+            jet_last_emb=args.jet_last_emb
+            
+            )
+    
+
+
     model.to(device)
     
     
@@ -453,69 +504,74 @@ if __name__ == "__main__":
     ##########Loading backbone ######################
 
     
+    if args.fun_model=='freeze':
+        
+        # Freeze the backbone (original_model)
+        # Freeze feature embeddings
+        for param in model.feature_embeddings.parameters():
+            param.requires_grad = False
+
+        # Freeze transformer layers
+        for param in model.layers.parameters():
+            param.requires_grad = False
+
+        # Freeze normalization and dropout layers
+        for param in model.out_norm.parameters():
+            param.requires_grad = False
+
+        for param in model.dropout_layer.parameters():
+            param.requires_grad = False
     
-    '''
-    # Freeze the backbone (original_model)
-    # Freeze feature embeddings
-    for param in model.feature_embeddings.parameters():
-        param.requires_grad = False
+        
 
-    # Freeze transformer layers
-    for param in model.layers.parameters():
-        param.requires_grad = False
-
-    # Freeze normalization and dropout layers
-    for param in model.out_norm.parameters():
-        param.requires_grad = False
-
-    for param in model.dropout_layer.parameters():
-        param.requires_grad = False
- 
-    '''
-  
-    ###I get the state dict, filtered, i.e. the last layer of the backbone is taken out and I get what I need
-    path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
-    filtered_opt_state_dict=orig_load_opt_dict(args.model_path_in,path_to_sate_dict)
+    if args.fun_model=='freeze' or args.fun_model=='fine':
+        ###I get the state dict, filtered, i.e. the last layer of the backbone is taken out and I get what I need
+        path_to_sate_dict = os.path.join(args.model_path_in, 'opt_state_dict_best.pt')
+        filtered_opt_state_dict=orig_load_opt_dict(args.model_path_in,path_to_sate_dict)
     
     # construct optimizer and auto-caster
     opt = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
+
+
+    if args.fun_model=='freeze' or args.fun_model=='fine':
+        
+        full_opt_state_dict = opt.state_dict()
+        # Merge optimizer states: Keep backbone params and update fine-tune params
+        merged_opt_state_dict = {"state": {}, "param_groups": full_opt_state_dict["param_groups"]}
+
+        # Copy over backbone optimizer states
+        for k, v in filtered_opt_state_dict.items():
+            if k in full_opt_state_dict["state"]:  # Ensure matching params exist
+                merged_opt_state_dict["state"][k] = v
+
+        # Add fine-tuning parameters (those not in the filtered state)
+        for k, v in full_opt_state_dict["state"].items():
+            if k not in merged_opt_state_dict["state"]:
+                merged_opt_state_dict["state"][k] = v  # Add fine-tune params
+
+        # Load the updated state dict into the optimizer
+        opt.load_state_dict(merged_opt_state_dict)
+        
+    if args.fun_model=='freeze':
+        #freezed backbone
+        print('freezing mode')
+        opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay)
+
+        '''
+        #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
+        print('model paramaters')
+        print(model.parameters())
+        print('opt state dict')
+        print(opt.state_dict())
+        
+        #last2paramgroups, last2state,last_keys=GetLast2Layers(opt.state_dict())
+        
+        #filtered_opt_state_dict= AddLayersToDict(filtered_opt_state_dict,last2state,last2paramgroups,last_keys)
+        
+        '''
     
-    '''
-    full_opt_state_dict = opt.state_dict()
-    # Merge optimizer states: Keep backbone params and update fine-tune params
-    merged_opt_state_dict = {"state": {}, "param_groups": full_opt_state_dict["param_groups"]}
-
-    # Copy over backbone optimizer states
-    for k, v in filtered_opt_state_dict.items():
-        if k in full_opt_state_dict["state"]:  # Ensure matching params exist
-            merged_opt_state_dict["state"][k] = v
-
-    # Add fine-tuning parameters (those not in the filtered state)
-    for k, v in full_opt_state_dict["state"].items():
-        if k not in merged_opt_state_dict["state"]:
-            merged_opt_state_dict["state"][k] = v  # Add fine-tune params
-
-    # Load the updated state dict into the optimizer
-    opt.load_state_dict(merged_opt_state_dict)
-    
-    #freezed backbone
-    #opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=args.lr, weight_decay=args.weight_decay)
-
-
-    #filtered_opt_state_dict=UpdateOpt(filtered_opt_state_dict,opt,model)
-    print('model paramaters')
-    print(model.parameters())
-    print('opt state dict')
-    print(opt.state_dict())
-    
-    #last2paramgroups, last2state,last_keys=GetLast2Layers(opt.state_dict())
-    
-    #filtered_opt_state_dict= AddLayersToDict(filtered_opt_state_dict,last2state,last2paramgroups,last_keys)
-    
-
-    '''
     #opt.load_state_dict(filtered_opt_state_dict)
     
     #print(opt.state_dict())
@@ -569,7 +625,7 @@ if __name__ == "__main__":
         #):
         progress_bar =tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}",leave=True)
-        for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(train_loader):
+        for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, hlf,label) in enumerate(train_loader):
         
             opt.zero_grad()
             jet1 = jet1.to(device)
@@ -579,9 +635,9 @@ if __name__ == "__main__":
             padding_mask2 = padding_mask2.to(device)
             
             label = label.to(device)
-
+            hlf=hlf.to(device)
             with torch.cuda.amp.autocast():
-                logits = model(jet1, jet2, padding_mask1, padding_mask2)
+                logits = model(jet1, jet2, padding_mask1, padding_mask2,hlf)
                 loss = model.loss(logits, label.view(-1, 1).float())
                 #loss = model.loss(logits, label)
 
@@ -617,7 +673,7 @@ if __name__ == "__main__":
             progress_bar =tqdm(
                 val_loader, total=len(val_loader), desc=f"Validation Epoch {epoch + 1}",leave=True
             )
-            for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, label) in enumerate(val_loader):
+            for batch_idx, (jet1,padding_mask1, jet2, padding_mask2, hlf,label) in enumerate(val_loader):
             
             
                 jet1 = jet1.to(device)
@@ -628,9 +684,9 @@ if __name__ == "__main__":
             
             
                 label = label.to(device)
-
+                hlf=hlf.to(device)
                 logits = model(
-                                 jet1, jet2, padding_mask1, padding_mask2
+                                 jet1, jet2, padding_mask1, padding_mask2,hlf
                 )
                 loss = model.loss(logits, label.view(-1, 1).float())
                 val_loss.append(loss.cpu().detach().numpy())
