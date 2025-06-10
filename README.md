@@ -7,8 +7,20 @@ Foundation models for High Energy Physics.
 
 
  # Data preprocessing
+
+To use the same predefined binning (nBins fixed to 40 30 30)
  
- To be filled. For now use already preprocessed data in /net/data_ttk/hreyes/JetClass/discretized/OneBin
+ ```python
+python preprocess_jetclass_onebinner.py --input_file   /net/data_ttk/hreyes/JetClass/JetClass_pt_part/TTBar_train.h5  --nBins 40 30 30 --nJets 10000000 --tag <tag-name>
+
+```
+To generate and preprocess with a new binning
+
+ ```python
+python preprocess_jetclass.py --input_file   /net/data_ttk/hreyes/JetClass/JetClass_pt_part/TTBar_train.h5  --nBins 40 30 30 --nJets 10000000 --tag <tag-name>
+
+```
+
 
  # Installation
 
@@ -21,7 +33,7 @@ conda activate new_env_name
 
 ```python
 
-python train.py --data_path /net/data_ttk/hreyes/JetClass/discretized/OneBin/TTBar_train___1Mfromeach_403030.h5 --model_path  <model-dir> --log_dir <model-dir>  --output linear --num_const 128 --num_epochs 5  --lr 0.001 --lr_decay 1e-06 --batch_size 100 --num_events 1000 --dropout 0 --num_heads 4 --num_layers 8 --num_bins 41 31 31 --weight_decay 1e-05 --hidden_dim 256 --end_token --start_token  --name_sufix YONFFAQ --num_events_val 5000 --checkpoint_steps 1200000
+python train.py --data_path /net/data_ttk/hreyes/OneBin/TTBar_train___1Mfromeach_403030.h5 --model_path  <model-dir> --log_dir <model-dir>  --output linear --num_const 128 --num_epochs 5  --lr 0.001 --lr_decay 1e-06 --batch_size 100 --num_events 1000 --dropout 0 --num_heads 4 --num_layers 8 --num_bins 41 31 31 --weight_decay 1e-05 --hidden_dim 256 --end_token --start_token  --name_sufix YONFFAQ --num_events_val 5000 --checkpoint_steps 1200000
 
 ```
 
