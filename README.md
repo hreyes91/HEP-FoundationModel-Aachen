@@ -58,6 +58,13 @@ python evaluate_probabilities.py --model <model-dir>+/model_best.pt  --data /net
 python train_classifier.py   --log_dir <c-model-dir> --bg /net/data_ttk/hreyes/OneBin/ZJetsToNuNu_train___1Mfromeach_403030.h5 --sig /net/data_ttk/hreyes/OneBin/n/TTBar_train___1Mfromeach_403030.h5 --num_const 128 --num_epochs 5  --lr 0.001 --batch_size 100 --num_events 100 --dropout 0.0 --num_heads 4 --num_layers 8 --hidden_dim 256 --name_sufix 4PTCYEG --fixed_samples
 
 ```
+# Train classifier with fine-tunning
+
+```python
+
+python train_finetune.py   --log_dir <c-model-dir> --bg /net/data_ttk/hreyes/OneBin/ZJetsToNuNu_train___1Mfromeach_403030.h5 --sig /net/data_ttk/hreyes/OneBin/n/TTBar_train___1Mfromeach_403030.h5 --num_const 128 --num_epochs 30  --lr .001 --batch_size 128 --num_events 1000 --name_sufix <name-sufix> --model_name model_best.pt --model_path_in <path-pretrain-model>  --num_events_val 200000 --dropout .1
+
+```
 
 
 # Test classifier
