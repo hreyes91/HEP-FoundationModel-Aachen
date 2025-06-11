@@ -119,7 +119,7 @@ class JetTransformer(Module):
     def __init__(
         self,
         hidden_dim=256,
-        num_layers=10,
+        num_layers=8,
         num_heads=4,
         num_features=3,
         num_bins=(41, 31, 31),
@@ -176,8 +176,8 @@ class JetTransformer(Module):
         # construct causal mask to restrict attention to preceding elements
         seq_len = x.shape[1]
         seq_idx = torch.arange(seq_len, dtype=torch.long, device=x.device)
-        causal_mask = seq_idx.view(-1, 1) < seq_idx.view(1, -1)
-        padding_mask = ~padding_mask
+        causal_mask = (seq_idx.view(-1, 1) < seq_idx.view(1, -1)).bool()
+        padding_mask = (~padding_mask).bool()
 
         # project x to initial embedding
         x[x < 0] = 0

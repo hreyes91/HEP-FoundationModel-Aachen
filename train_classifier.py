@@ -125,23 +125,8 @@ def load_data(file):
         print('data')
         print(dat)
     elif file.endswith("h5"):
-    
-        if args.fixed_samples==False:
-        
-            start_value=random.randint(0,1000000-args.num_events)
-            dat = pd.read_hdf(file, key="discretized", start=start_value, stop=start_value+args.num_events)
-
-        else:
-    
-            dat = pd.read_hdf(file, key="discretized", stop=args.num_events)
-        
-        
-        
+        dat = pd.read_hdf(file, key="discretized", stop=args.num_events)
         dat = dat.to_numpy(dtype=np.int64)[:, : args.num_const * 3]
-        print('dat')
-        print(dat)
-        
-        
         dat = dat.reshape(dat.shape[0], -1, 3)
     else:
         assert False, "Filetype for bg not supported"
@@ -191,6 +176,7 @@ def get_dataloader(
 
 
 def plot_rocs(model, val_loader, tag):
+    
     labels = []
     preds = []
     model.eval()
@@ -367,17 +353,3 @@ if __name__ == "__main__":
     plot_rocs(model, val_loader, tag="last")
     model = load_model(os.path.join(args.log_dir, "model_best.pt"))
     plot_rocs(model, val_loader, tag="best")
-
-
-
-plt.close()
-plt.close()
-import matplotlib.pyplot as plt
-plt.plot(history_frame['loss'], label='Train Loss')
-plt.plot(history_frame['val_loss'], label='Val Loss')
-plt.xlabel('iter')
-plt.ylabel('Loss')
-plt.yscale('log')
-plt.legend()
-plt.savefig(os.path.join(args.log_dir, "history.pdf"))
-plt.close()

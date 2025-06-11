@@ -99,7 +99,11 @@ model.classifier = False
 model.to(device)
 
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=args.learnrate_factor, patience=args.patience, verbose=True)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    opt, mode='min', 
+    factor=args.learnrate_factor, 
+    patience=args.patience, 
+    verbose=True)
 scaler = torch.cuda.amp.GradScaler()
 
 if args.contin:
