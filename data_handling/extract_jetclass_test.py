@@ -45,7 +45,7 @@ def get_tuples(table):
     ) % (2 * np.pi) - np.pi
 
     # Relative transverse momentum with respect to the jet pT
-    part_pt = part_pt / table["jet_pt"]
+    #part_pt = part_pt / table["jet_pt"]
     return part_pt, part_eta_dir, part_phi_dir
 
 
