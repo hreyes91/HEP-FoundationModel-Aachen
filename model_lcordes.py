@@ -82,15 +82,15 @@ def get_dataloader(
     batch_size=100,
     num_workers=4,
     train=True,
-    split=(.6, .2, .2)
+    split=(60, 20) # train / val
 ):
     """ 
     num_const: jets from bg and sig EACH! Total amount of jets = 2 * num_cons
     bg_file and sig_file: refer to the data used for training. validation and testing data paths are infered by replacing "train" to "val" or "test" in the filename
-    val_split: val data has <val_split> the size of training data
+    val_split: Training data has size 2*num_events, val data has size split[1] / split[0] * 2 * num_events, and the test data has size 2 * num_events if selected using train=False
     """
     
-    def __get_dataloader__(bg_file, sig_file, num_events, num_const, batch_size, num_workers):
+    def __get_dataloader__(bg_file, sig_file, num_events, num_const, batch_size, num_workers, shuffle=True):
         bg = load_data(bg_file, num_events, num_const)
         sig = load_data(sig_file, num_events, num_const)
         if num_events is None: 
@@ -111,7 +111,7 @@ def get_dataloader(
         loader = DataLoader(
             dataset, 
             batch_size=batch_size,
-            shuffle=True,
+            shuffle=shuffle,
             num_workers=num_workers,
         )
         return loader
@@ -124,14 +124,14 @@ def get_dataloader(
     
     
     num_events_val = int(num_events * (split[1] / split[0])) if num_events else None        
-    num_events_test = int(num_events * (split[2] / split[0])) if num_events else None        
+    # num_events_test = int(num_events * (split[2] / split[0])) if num_events else None        
     
     if train: 
         train_dataloader =  __get_dataloader__(bg_file, sig_file, num_events, num_const, batch_size, num_workers)
         val_dataloader =  __get_dataloader__(val_bg_file, val_sig_file, num_events_val, num_const, batch_size, num_workers)
         return  train_dataloader, val_dataloader
     else: 
-        test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events_test, num_const, batch_size, num_workers)
+        test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, num_const, batch_size, num_workers)
         return test_dataloader
 
 
@@ -159,9 +159,8 @@ class MeanPoolHead(nn.Module):
         pooled = x.sum(dim=1) / num_const  # (B, D)
         return self.classifier(pooled)
 
-
 class MaxPoolHead(nn.Module):
-    def __init__(self, hidden_dim=256, dropout=0.1):
+    def __init__(self, hidden_dim=256):
         super().__init__()
         self.linear = nn.Linear(hidden_dim, 1)
 
@@ -170,6 +169,37 @@ class MaxPoolHead(nn.Module):
         x = torch.masked.amax(x, dim=1, mask=~padding) # (B, D)
         return self.linear(x)
 
+class AttentionPoolHead(nn.Module):
+    def __init__(self, hidden_dim=256, num_heads=4, dropout=0.0):
+        super().__init__()
+        self.query = nn.Parameter(torch.randn(1, 1, hidden_dim))
+        self.attn = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, dropout=dropout, batch_first=True,)
+        self.linear = nn.Linear(hidden_dim, 1)
+
+    def forward(self, x, padding):
+        B, C, D = x.shape
+        q = self.query.expand(B, -1, -1)  # (1, 1, D) \to (B, 1, D)
+        
+        attn_out, _ = self.attn(q, x, x, key_padding_mask=padding)  # (B, 1, D)
+        pooled = attn_out.squeeze(1)  # (B, 1, D) → (B, D)
+        
+        return self.linear(pooled)  # (B, 1)
+    
+class SimpleAttentionPoolHead(nn.Module):
+    def __init__(self, hidden_dim=256):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.query = nn.Parameter(torch.randn(self.hidden_dim))
+        self.linear = nn.Linear(hidden_dim, 1, bias=True)
+
+    def forward(self, x, padding):
+        attn_scores = x @ self.query  # (B, C)
+        attn_weights = torch.masked.softmax(attn_scores, dim=1, mask=~padding).unsqueeze(-1)  # (B, C, 1)
+        pooled = torch.sum(x * attn_weights, dim=1)  # (B, D)
+        
+        y = self.linear(pooled)
+        y.attn_weights = attn_weights.detach()
+        return y # (B, 1)
 
 class CLSTokenHead(nn.Module):
     def __init__(self, hidden_dim=256, num_heads=4, num_layers=2, dropout=0):
@@ -269,14 +299,11 @@ class JetClassifier(nn.Module):
             if isinstance(module, torch.nn.Dropout):
                 module.p = p
 
-    def clone(self, new_dir, exist_ok=False):
-        c = copy.deepcopy(self)
-        c.dir = Path(new_dir)
-        c.dir.mkdir(exist_ok=exist_ok)
-        (c.dir / "logs").mkdir(exist_ok=exist_ok)
-        (c.dir / "tests").mkdir(exist_ok=exist_ok)
-        torch.save(c, c.dir / "model_best.pt")
-        return c
+    def migrate(self, new_dir):
+        old_dir = self.dird
+        self.dir = Path(new_dir)
+        
+        old_dir.rename(new_dir)
 
     def save(self, name="model_last"):
         torch.save(self, self.dir / f"{name}.pt")
@@ -508,5 +535,3 @@ class JetClassifier(nn.Module):
         
         self.best_auc = max(self.best_auc, aucs[0])
         self.total_time_tested += time.time() - t0
-        
-        

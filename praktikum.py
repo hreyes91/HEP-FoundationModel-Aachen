@@ -215,7 +215,7 @@ def format_number(x, fmt=None, udigits=2, fdigits=3, fformat="nice", latex=False
 fn = format_number
 
 
-def table(data, headers=None, index_column=None, fmt=None, filename=None, caption=None, show=True, show_latex=False, table_option="H", compact=True, head=None):
+def table(data, headers=None, index_column=None, fmt=None, filename=None, caption=None, show=True, show_latex=False, table_option="H", compact=True, head=None, sort_by_col=False, reverse_sort=False):
     if not isinstance(data[0],Iterable): data = np.array(data)[:,None]
     
     # throw helpful errors 
@@ -231,6 +231,10 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
         head = min(min_len, head)
         data = [col[:head] for col in data]
     data = np.asarray(data, dtype=object)
+    
+    if sort_by_col:
+        idx = np.argsort(data[sort_by_col])[::-1 if reverse_sort else 1]
+        data = data[:,idx]
         
     label = filename.split(".")[0] if filename else ""
     

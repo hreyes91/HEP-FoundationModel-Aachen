@@ -24,34 +24,27 @@ paths = {"ttbar/train": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_train___1Mfrome
         "qcd_aachen/test": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/test.h5"),
         "qcd_aachen/val": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/val.h5")}
 
-def test(pattern="", N=1000_000):
+def test_models(pattern="", N=1000_000, dry=False):
     models_best = list(walk_dir(pattern + r".*model_best\.pt$"))
     preds_best = [max(walk_dir(f"tests/{torch.load(x, 'cpu').global_step}.*npz", x.parent))
                   for x in models_best]
     for model, pred in zip(models_best, preds_best):
         if str(N) not in str(pred):
-            model = torch.load(model, "cpu")
-            model.test_model(N)
-            
+            if dry: 
+                print(model)
+            else:
+                model = torch.load(
+                model, "cpu")
+                model.test_model(N)
+        
 
-def main():
-    test()
-    # model = JetClassifier(dir = r"/net/data_ttk/lcordes/classifier_var_heads/QCD_vs_Top/MeanPoolHead",
-    #                       backbone = r"/net/data_ttk/lcordes/TTBar_10m_20e/model_best.pt",
-    #                       head = MeanPoolHead(), 
-    #                       bg_file = paths["z/train"],
-    #                       sig_file = paths["ttbar/train"])
+def main():    
+    backbone = "/net/data_ttk/lcordes/ZToNuNu_copy/model_best.pt"
+    src = Path("/net/data_ttk/lcordes/classifier_var_heads/QCD_vs_Aachen")
     
-    # model.train_model()
+    model = torch.load(src / "NormalHead/model_last.pt")
+    model.train_model(epochs=30, num_events=194350, num_events_test=64784, lr=2e-4, min_lr=2e-7)
     
-    
-    # model = JetClassifier(dir = r"/net/data_ttk/lcordes/classifier_var_heads/QCD_vs_Top/MaxPoolHead",
-    #                       backbone = r"/net/data_ttk/lcordes/TTBar_10m_20e/model_best.pt",
-    #                       head = MaxPoolHead(), 
-    #                       bg_file = paths["z/train"],
-    #                       sig_file = paths["ttbar/train"])
-    
-    # model.train_model()
     
     
 if __name__=="__main__":
