@@ -63,16 +63,6 @@ def __plot_classifiers__(filenames, labels, switch=None):
     
     return aucs
 
-def load_data(file, stop, num_const):
-    """ 
-        returns num_events x num_const x 3 
-    """
-    data = pd.read_hdf(file, key="discretized", stop=stop)
-    data = data.to_numpy(dtype=np.int64)[:, : num_const * 3]
-    data = data.reshape(data.shape[0], -1, 3)
-    if stop is not None:
-        assert len(data)==stop, f"data source '{file}' contains only {len(data)} events, but {stop} where requested!"
-    return data
 
 def get_dataloader(
     bg_file,
@@ -89,10 +79,20 @@ def get_dataloader(
     bg_file and sig_file: refer to the data used for training. validation and testing data paths are infered by replacing "train" to "val" or "test" in the filename
     val_split: Training data has size 2*num_events, val data has size split[1] / split[0] * 2 * num_events, and the test data has size 2 * num_events if selected using train=False
     """
-    
+    def __load_data__(file, stop, num_const):
+        """ 
+            returns num_events x num_const x 3 (pt/eta/phi)
+        """
+        data = pd.read_hdf(file, key="discretized", stop=stop)
+        data = data.to_numpy(dtype=np.int64)[:, : num_const * 3]
+        data = data.reshape(data.shape[0], -1, 3)
+        if stop is not None:
+            assert len(data)==stop, f"data source '{file}' contains only {len(data)} events, but {stop} where requested!"
+        return data
+
     def __get_dataloader__(bg_file, sig_file, num_events, num_const, batch_size, num_workers, shuffle=True):
-        bg = load_data(bg_file, num_events, num_const)
-        sig = load_data(sig_file, num_events, num_const)
+        bg = __load_data__(bg_file, num_events, num_const)
+        sig = __load_data__(sig_file, num_events, num_const)
         if num_events is None: 
             num_events = min(len(bg), len(sig))
             print(f"loaded {num_events} events from bg and sig each. bg has {len(bg)} total, sig has {len(sig)} total.")
@@ -355,7 +355,77 @@ class JetClassifier(nn.Module):
         for layer in [self.feature_embeddings, self.layers, self.out_norm]:
             for p in layer.parameters():
                 p.requires_grad = not freeze
-            
+    
+    
+    def get_dataloader(
+        self,
+        num_events=1000_000,
+        batch_size=100,
+        num_workers=4,
+        train=True,
+        split=(60, 20) # train / val
+    ):
+        """ 
+        num_const: jets from bg and sig EACH! Total amount of jets = 2 * num_cons
+        bg_file and sig_file: refer to the data used for training. validation and testing data paths are infered by replacing "train" to "val" or "test" in the filename
+        val_split: Training data has size 2*num_events, val data has size split[1] / split[0] * 2 * num_events, and the test data has size 2 * num_events if selected using train=False
+        """
+        def __load_data__(file, stop, num_const):
+            """ 
+                returns num_events × num_const × 3 (pt/eta/phi)
+            """
+            data = pd.read_hdf(file, key="discretized", stop=stop)
+            data = data.to_numpy(dtype=np.int64)[:, : num_const * 3]
+            data = data.reshape(data.shape[0], -1, 3)
+            if stop is not None:
+                assert len(data)==stop, f"data source '{file}' contains only {len(data)} events, but {stop} where requested!"
+            return data
+
+        def __get_dataloader__(bg_file, sig_file, num_events, num_const, batch_size, num_workers, shuffle=True):
+            bg = __load_data__(bg_file, num_events, num_const)
+            sig = __load_data__(sig_file, num_events, num_const)
+            if num_events is None: 
+                num_events = min(len(bg), len(sig))
+                print(f"loaded {num_events} events from bg and sig each. bg has {len(bg)} total, sig has {len(sig)} total.")
+                bg = bg[:num_events]
+                sig = sig[:num_events]
+
+            data = torch.from_numpy(np.concatenate((bg, sig), 0))
+            label = torch.from_numpy(np.append(np.zeros(len(bg)), np.ones(len(sig))))
+            padding = data[:, :, 0] < 0
+
+            dataset = TensorDataset(
+                data,
+                padding.bool(),
+                label,
+            )
+            loader = DataLoader(
+                dataset, 
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+            )
+            return loader
+        
+        bg_file, sig_file = Path(self.bg_file), Path(self.sig_file)
+        val_bg_file       = bg_file.with_name( bg_file.name.replace("train", "val") )
+        val_sig_file      = sig_file.with_name( sig_file.name.replace("train", "val") )
+        test_bg_file      = bg_file.with_name( bg_file.name.replace("train", "test") ) 
+        test_sig_file     = sig_file.with_name( sig_file.name.replace("train", "test") )
+        
+        
+        num_events_val = int(num_events * (split[1] / split[0])) if num_events else None        
+        # num_events_test = int(num_events * (split[2] / split[0])) if num_events else None        
+        
+        if train: 
+            train_dataloader =  __get_dataloader__(bg_file, sig_file, num_events, self.num_const, batch_size, num_workers)
+            val_dataloader =  __get_dataloader__(val_bg_file, val_sig_file, num_events_val, self.num_const, batch_size, num_workers)
+            return  train_dataloader, val_dataloader
+        else: 
+            test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, self.num_const, batch_size, num_workers)
+            return test_dataloader
+
+        
     def forward(self, jet, padding):
         padding = padding.to(dtype=torch.bool)
         
@@ -377,7 +447,10 @@ class JetClassifier(nn.Module):
 
         return self.head(emb, padding)
 
-    def train_model(self, epochs=10, num_events=1_000_000, lr=1e-3, min_lr=1e-6, weight_decay=1e-5, batch_size=100, num_workers=1, use_profiler=False, num_events_test=100_000, testing_steps=1, logging_steps=100, dropout_p=0.1, checkpoint=True, freeze=False):
+    def train_model(self, epochs=10, num_events=1_000_000, lr=1e-3, min_lr=1e-6, weight_decay=1e-5, batch_size=100, num_workers=1, use_profiler=False, num_events_test=100_000, testing_steps=1, logging_steps=100, dropout_p=0.1, checkpoint=True, freeze=False, scheduler="CosineAnnealingLR"):
+        """
+            scheduler: CosineAnnealingLR / Constant
+        """
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.to(device)
 
@@ -385,6 +458,7 @@ class JetClassifier(nn.Module):
                     ["epochs:", epochs],
                     ["num_events:", num_events],
                     ["freeze:", freeze],
+                    ["scheduler:", scheduler],
                     ["lr:", lr],
                     ["min_lr:", min_lr],
                     ["dropout_p:", dropout_p],
@@ -403,10 +477,28 @@ class JetClassifier(nn.Module):
         self.set_freeze(freeze)
         if self.global_step==0: self.test_model(num_events_test, batch_size, num_workers, log=True)
         
-        train_loader, val_loader = get_dataloader(self.bg_file, self.sig_file, num_events, self.num_const, batch_size, num_workers, True)
+        train_loader, val_loader = self.get_dataloader(num_events, batch_size, num_workers, train=True,)
         optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=lr, weight_decay=weight_decay)
-        # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader) * epochs, eta_min=min_lr)
+        
+        if scheduler == "CosineAnnealingLR":
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader) * epochs, eta_min=min_lr)
+        elif scheduler == "Constant":
+            class ConstantLRScheduler:
+                def __init__(self, optimizer, lr):
+                    self.optimizer = optimizer
+                    self.lr = lr
+                    for param_group in self.optimizer.param_groups:
+                        param_group['lr'] = self.lr
+
+                def step(self):
+                    pass
+
+                def get_last_lr(self):
+                    return [self.lr]
+            
+            scheduler = ConstantLRScheduler(optimizer, lr)
+        else: assert False, f"invalid scheduler: '{scheduler}'"
+        
         # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         #     optimizer, 
         #     T_0=int(2*num_events/batch_size * epochs + 1),
@@ -489,7 +581,7 @@ class JetClassifier(nn.Module):
         self.to(device)
         
         self.eval()
-        test_loader = get_dataloader(self.bg_file, self.sig_file, num_events, self.num_const, batch_size, num_workers, train=False)
+        test_loader = self.get_dataloader(num_events, batch_size, num_workers, train=False)
         
         labels, logits, predictions = [], [], []
         with torch.no_grad():
@@ -535,3 +627,70 @@ class JetClassifier(nn.Module):
         
         self.best_auc = max(self.best_auc, aucs[0])
         self.total_time_tested += time.time() - t0
+
+    def test_gradients(self, n=1):
+        """
+            n: computes the gradients of n signal- and n bg-jets
+            returns: gradients filepath = (<model_dir>/tests/<global_step>_<global_epoch>/gradients_<n>.npz) 
+            
+            gradients file has keys: 
+                jets (2*n, num_const, feature), 
+                gradients (2*n, num_const, feature),
+                paddings (2*n, num_const), 
+                labels (2*n)
+        """
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {device}")
+        self.to(device)
+        self.eval()
+
+        test_loader = list(self.get_dataloader(n, batch_size=1, num_workers=0, train=False))
+        np.random.shuffle(test_loader)
+
+        jets, paddings, labels, gradients = [], [], [], []
+
+        for jet, padding, label in tqdm(test_loader):
+            jet = jet.to(device)
+            padding = padding.to(device)
+            label = label.to(device)
+
+            y = self(jet, padding)
+
+            gradient = torch.zeros_like(jet, dtype=torch.float, device=device)
+
+            for const in range(jet.shape[-2]):
+                if padding[0, const]: continue  # Skip padded
+
+                for feature in range(jet.shape[-1]):
+                    jet_prime = jet.detach().clone()
+
+                    sign = +1
+                    value = jet[0, const, feature]
+                    if (feature == 0 and value == 40) or (feature != 0 and value == 30):
+                        jet_prime[0, const, feature] -= 1
+                        sign = -1
+                    else:
+                        jet_prime[0, const, feature] += 1
+
+                    with torch.no_grad():
+                        y_prime = self(jet_prime, padding)
+
+                    gradient[0, const, feature] = sign * (y - y_prime).item()
+
+            jets.append(jet[0].cpu().numpy())
+            paddings.append(padding[0].cpu().numpy())
+            labels.append(label[0].cpu().numpy())
+            gradients.append(gradient[0].cpu().numpy())
+
+        jets = np.asarray(jets)
+        paddings = np.asarray(paddings)
+        labels = np.asarray(labels)
+        gradients = np.asarray(gradients)
+
+        filename = f"{self.dir}/tests/{self.global_step}_{self.global_epoch}/gradients_{n}"
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        np.savez(filename, jets=jets, paddings=paddings, labels=labels, gradients=gradients)
+        print(f"Gradients saved as: '{filename}.npz'")
+        
+        return f"{filename}.npz"
+            
