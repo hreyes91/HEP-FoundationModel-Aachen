@@ -143,20 +143,20 @@ main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
 
 #sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-5000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-2000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-1000.h5','discrete_1Mfromeach_403030_Weak-mix-Train-600.h5','discrete_1Mfromeach_403030_Weak-mix-Train-300.h5','discrete_1Mfromeach_403030_Weak-mix-Train-100.h5']
 
-sig_list=['discrete_1Mfromeach_403030_Weak-mix-Train-10000.h5']
+sig_list=['discrete_1Mfromeach_403030_sn-N100-SR-Train.h5']
 
-bg_list=['discrete_1Mfromeach_403030_bg-N100-SR-Train.h5']
 bg='discrete_1Mfromeach_403030_bg-N100-SR-Train.h5'
+
 #test_data
-data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
+data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test_150k.h5'
 data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
-num_events_test=50000
+num_events_test=20000
 r_tresh=.3
 dict_auc={'suffix':[],'sig':[],'auc':[],'r_'+str(r_tresh):[],'acc':[]}
 
 
 
-num_epochs_list=[100]
+num_epochs_list=[20]
 dropout_list=[0.0]
 num_heads_list=[4]
 num_layers_list=[8]
@@ -164,23 +164,23 @@ hidden_dim_list=[256]
 batch_size_list=[128]
 num_events_list=[1000000]
 num_const_list=[100]
-lr_list=[.0001]
+lr_list=[.001]
 weight_decay_list=[1e-6]
 
-fine_tune_list=['fine']
+fine_tune_list=['fine','freeze','scratch']
 use_sep_token_list=['true']
-use_hlf_list=['linear']
+use_hlf_list=['False','linear']
 
 num_events_val_max=500000
 
-run_number=990
-tag_of_train='LHCO_CLS'
+run_number=100
+tag_of_train='LHCO_CLS_svi'
 model_name='model_best.pt'
 model_name_test='best'
 model_path_in='/net/data_ttk/hreyes/JetClass/OptClass/ZJetsToNuNu_models/ZJetsToNuNu_run_test__part_pt_1Mfromeach_403030_test_2_BU2IWA1/'
 
 jet_last_emb_list=['linear']
-scheduler_name_list=['reduce']
+scheduler_name_list=['cos','reduce']
 
 
 for fine_tune in fine_tune_list:
@@ -208,7 +208,7 @@ for fine_tune in fine_tune_list:
                                                 
                                                     
                                                     run_number=run_number+1
-                                                    log_dir='/net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run_number)+'/Classification_AL_scratch_test_datav2/'+tag_of_train
+                                                    log_dir='/net/data_ttk/hreyes/LHCO/Supervised/RUN'+str(run_number)+'/Classification_AL_scratch_test_datav2/'+tag_of_train
                                                     for sig in sig_list:
                                                         #for bg in bg_list:
                                                         for weight_decay in weight_decay_list:

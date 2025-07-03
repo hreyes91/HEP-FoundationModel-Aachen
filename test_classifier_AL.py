@@ -378,31 +378,38 @@ if __name__ == '__main__':
     # load and preprocess data
     print(f"Loading test set")
     test_loader = get_dataloader(args.data_path_1,args.data_path_2)
+
     # construct model
-    model = load_model(args.model_name)
+    
 
     if args.model_name=='ensemble':
+        model_list=[]
+        for j in range(0,20):
+            try:
+                model= load_model('epoch_'+str(j))
+            except:
+                continue
+            model_list.append(model)
+            
+     
 
-        model_1 = load_model('best')
-        model_2 = load_model('last')
-        model_3 = load_model('best_train')
-        model_4 = load_model('epoch_3')
-        model_5 = load_model('epoch_8')
-        model_list=[model_1,model_2,model_3,model_4,model_5]
+    
 
-    print("Loaded model")
-    model.to(device)
-    model.eval()
 
-    loss_list = []
-    prediction_list = []
-    label_list = []
-    logits_list=[]
     min_val_loss = np.inf
 
     if args.model_name == 'ensemble':
-        
+        all_predictions=[]
+        all_logits_list=[]
         for model in model_list:
+
+            model.to(device)
+            model.eval()
+
+            loss_list = []
+            prediction_list = []
+            label_list = []
+            logits_list=[]
 
 
             with torch.no_grad():
@@ -432,11 +439,22 @@ if __name__ == '__main__':
             label_all = np.concatenate(label_list, axis=0)
 
             predictions=predictions[:,0]
-
-
-            
-
+            all_predictions.append(predictions)
+            all_logits_list.append(logits_all)
+        print(all_predictions)
+        predictions=np.mean(np.array(all_predictions), axis=0)
+        all_logits=np.mean(np.array(all_logits_list), axis=0)
+       
     else:
+        model = load_model(args.model_name)
+        print("Loaded model")
+        model.to(device)
+        model.eval()
+
+        loss_list = []
+        prediction_list = []
+        label_list = []
+        logits_list=[]
         with torch.no_grad():
             for jet1, padding_mask1,jet2, padding_mask2,hlf, label in tqdm(test_loader, total=len(test_loader), desc=f'Testing'):
                 label_list.append(label.detach().numpy())
@@ -464,6 +482,7 @@ if __name__ == '__main__':
         label_all = np.concatenate(label_list, axis=0)
 
         predictions=predictions[:,0]
+        
 
 
 

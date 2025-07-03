@@ -90,9 +90,15 @@ if __name__ == "__main__":
     loss_list = []
     perplexity_list = []
     mean_val_loss=9999999
+
+
+    loss_list_epoch=[]
+    val_list_epoch=[]
+
+
     for epoch in range(args.num_epochs):
         model.train()
-
+        loss_list_here=[]
         for x, padding_mask, true_bin in tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}"
         ):
@@ -120,6 +126,7 @@ if __name__ == "__main__":
             scheduler.step()
 
             loss_list.append(loss.cpu().detach().numpy())
+            loss_list_here.append(loss.cpu().detach().numpy())
             perplexity_list.append(perplexity.mean().cpu().detach().numpy())
 
             if (global_step + 1) % args.logging_steps == 0:
@@ -172,3 +179,27 @@ if __name__ == "__main__":
         save_model(model, args.log_dir, "last")
         save_opt_states(opt, scheduler, scaler, args.log_dir)
     
+        mean_loss=np.mean(loss_list_here)
+        mean_val=np.mean(val_loss)
+        loss_list_epoch.append(mean_loss)
+        val_list_epoch.append(mean_val)
+
+    history={'loss':loss_list_epoch,'val_loss':val_list_epoch}
+    
+    history_frame=pd.DataFrame(history)
+    history_frame.to_csv(os.path.join(args.log_dir, "history.txt"),index=False)
+
+
+
+
+  
+    import matplotlib.pyplot as plt
+    plt.plot(history_frame['loss'], label='Train Loss')
+    plt.plot(history_frame['val_loss'], label='Val Loss')
+    plt.xlabel('iter')
+    plt.ylabel('Loss')
+    plt.yscale('log')
+    plt.legend()
+    plt.savefig(os.path.join(args.log_dir, "history.pdf"))
+    plt.close()
+    logger.close()

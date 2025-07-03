@@ -584,7 +584,7 @@ if __name__ == "__main__":
         )
     
     if args.scheduler_name=='reduce':
-        scheduler =get_ReduceLROnPlateau(optimizer=opt, patience=3, min_lr=1e-8)
+        scheduler =get_ReduceLROnPlateau(optimizer=opt, patience=300, min_lr=1e-8)
 
 
     if args.scheduler_name=='combined':

@@ -60,13 +60,7 @@ def GetPredictionsPerEpoch(model_dir,epoch):
     
     
     return predictions_epoch
-
-def GetPredictionsEnsemble(model_dir):
-
-    predictions_epoch = np.load(model_dir+'/predictions_ensemble.npz')
     
-    
-    return predictions_epoch
 
 
 
@@ -171,24 +165,19 @@ def TestResults(dict_auc,model_dir,r_tresh):
     arguments_file=read_file(model_dir+'/arguments.txt')
     num_events_train=extract_value('sig',arguments_file)
     
-    #num_events_train=int(num_events_train.split('/')[-1].split('-')[-1].split('.')[0])
-    num_events_train=99999
+    num_events_train=int(num_events_train.split('/')[-1].split('-')[-1].split('.')[0])
+    
     print(num_events_train)
     print('got num events train')
     
     predictions=GetPredictions(model_dir)
     predictions_last=GetPredictionsLast(model_dir)
     predictions_best_train=GetPredictionsBestTrain(model_dir)
-    
-    predictions_ensemble=GetPredictionsEnsemble(model_dir)
 
     print('got predictions')
- 
-    
     auc_score,r_val,acc,max_sic,fpr,tpr=TestMetrics(predictions,r_tresh)
-    auc_score_ens,r_val_ens,acc_ens,max_sic_ens,fpr_ens,tpr_ens=TestMetrics(predictions_ensemble,r_tresh)
+
     print(auc_score)
-    
     auc_score_last,r_val_last,acc_last,max_sic_last,fpr_last,tpr_last=TestMetrics(predictions_last,r_tresh)
     #PlotRocCurve(fpr, tpr,num_events_train,auc_score)
 
@@ -207,7 +196,7 @@ def TestResults(dict_auc,model_dir,r_tresh):
     dict_auc.get('max_sic_last').append(max_sic_last)
   
 
-    return num_events_train,auc_score,max_sic,auc_score_last,max_sic_last,fpr,tpr,fpr_last,tpr_last,auc_score_best_train,max_sic_best_train,fpr_best_train,tpr_best_train,auc_score_ens,max_sic_ens,fpr_ens,tpr_ens
+    return num_events_train,auc_score,max_sic,auc_score_last,max_sic_last,fpr,tpr,fpr_last,tpr_last,auc_score_best_train,max_sic_best_train,fpr_best_train,tpr_best_train
     
     
 def PlotAUCs(auc_frame,path_to_plots,plot_title):
@@ -238,12 +227,12 @@ def PlotMaxSICs(auc_frame,path_to_plots,plot_title):
 def TestAgain(model_dir,model_name_test='best'):
 
     main_dir_discrete='/net/data_ttk/hreyes/LHCO/LHCO_discrete/'
-    #data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
-    #data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
-
-    data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test_150k.h5'
+    data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test.h5'
     data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
-    num_events_test=20000
+
+    #data_path_1=main_dir_discrete+'discrete_1Mfromeach_403030_bg-N100-SR-Test_150k.h5'
+    #data_path_2=main_dir_discrete+'discrete_1Mfromeach_403030_sn-N100-SR-Test.h5'
+    num_events_test=50000
 
     
     num_const=100
@@ -292,8 +281,8 @@ def TestPerEpoch(model_dir):
     lines=read_file(model_dir+'/arguments.txt')
     num_epochs=int(extract_value('num_epochs',lines))
     print('hello')
-    #num_signal=int(extract_value('sig',lines).split('-')[-1].split('.')[0])
-    num_signal=999999999
+    num_signal=int(extract_value('sig',lines).split('-')[-1].split('.')[0])
+    #num_signal=999999999
     
     print(num_epochs)
     print('hello')
@@ -369,15 +358,15 @@ model_types={#'scratch LL+HLF':'Classification_AL_scratch_wHLF_test_datav2_10/',
              # 'finetuned LL':'Classification_AL_finetune_AVGpoolhead_test_datav2_5/'
               
               }
-all_runs_1000={'RUN':[],'auc_best':[],'max_sic_best':[],'auc_last':[],'max_sic_last':[],'auc_best_train':[],'max_sic_best_train':[],'auc_absbest':[],'max_sic_absbest':[],'epoch_auc_best':[],'epoch_max_sic_best':[],'auc_ens':[],'max_sic_ens':[],'fine':[],'hlf':[],'schedule':[]}
+all_runs_1000={'RUN':[],'auc_best':[],'max_sic_best':[],'auc_last':[],'max_sic_last':[],'auc_best_train':[],'max_sic_best_train':[],'auc_absbest':[],'max_sic_absbest':[],'epoch_auc_best':[],'epoch_max_sic_best':[],'fine':[],'hlf':[],'schedule':[]}
 all_runs_2000={'RUN':[],'auc_best':[],'max_sic_best':[],'auc_last':[],'max_sic_last':[],'auc_best_train':[],'max_sic_best_train':[],'auc_absbest':[],'max_sic_absbest':[],'epoch_auc_best':[],'epoch_max_sic_best':[]}
 rocs={'RUN':[],'fpr_best':[],'tpr_best':[],'fpr_last':[],'tpr_last':[]}
-test_again='True'
-first_run=951
-last_run=987
+test_again='False'
+first_run=101
+last_run=103
 for run in range(first_run,last_run):
 
-    main_result_dir='//net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run)+'/'
+    main_result_dir='//net/data_ttk/hreyes/LHCO/IdealizedClasifitaction//RUN'+str(run)+'/'
     out_result_dir='./AnomalyDetectionResults/IdealizedClasifitaction/RUN'+str(run)+'/'
     os.makedirs(out_result_dir, exist_ok=True)
     for model_type in model_types.keys():
@@ -393,14 +382,13 @@ for run in range(first_run,last_run):
                 try:
                     model_dir=main_result_dir+model_types.get(model_type)+'/'+result
                     print(model_dir)
-                 
                     if test_again=='True':
-                        TestAgain(model_dir,model_name_test='ensemble')
+                        TestAgain(model_dir)
 
                     
                     num_signal,auc_abs_best,epoch_best_auc,max_sic_abs_best,epoch_best_max_sic_best=TestPerEpoch(model_dir)
                     print('hello')
-                    num_events_train,auc_best,max_sic_best,auc_last,max_sic_last,fpr_best,tpr_best,fpr_last,tpr_last,auc_score_best_train,max_sic_best_train,fpr_best_train,tpr_best_train,auc_score_ens,max_sic_ens,fpr_ens,tpr_ens=TestResults(dict_auc,model_dir,r_tresh)
+                    num_events_train,auc_best,max_sic_best,auc_last,max_sic_last,fpr_best,tpr_best,fpr_last,tpr_last,auc_score_best_train,max_sic_best_train,fpr_best_train,tpr_best_train=TestResults(dict_auc,model_dir,r_tresh)
                     print('hello there')
                     
                     os.system('cp '+model_dir+'/arguments.txt '+out_result_dir+'/arguments_'+str(num_events_train)+'.txt')
@@ -413,33 +401,30 @@ for run in range(first_run,last_run):
                     dict_auc.get('result').append(result)
                     print(num_events_train)
                     
-                    #if num_events_train==10000:
+                    if num_events_train==10000:
                     #spv=1
                     #if spv == 1:
                     #    print('supervised')
                     #    exit()
-                    all_runs_1000.get('RUN').append(run)
-                    all_runs_1000.get('auc_best').append(auc_best)
-                    all_runs_1000.get('max_sic_best').append(max_sic_best)
-                    all_runs_1000.get('auc_last').append(auc_last)
-                    all_runs_1000.get('max_sic_last').append(max_sic_last)
+                        all_runs_1000.get('RUN').append(run)
+                        all_runs_1000.get('auc_best').append(auc_best)
+                        all_runs_1000.get('max_sic_best').append(max_sic_best)
+                        all_runs_1000.get('auc_last').append(auc_last)
+                        all_runs_1000.get('max_sic_last').append(max_sic_last)
 
-                    all_runs_1000.get('auc_best_train').append(auc_score_best_train)
-                    all_runs_1000.get('max_sic_best_train').append(max_sic_best_train)
+                        all_runs_1000.get('auc_best_train').append(auc_score_best_train)
+                        all_runs_1000.get('max_sic_best_train').append(max_sic_best_train)
 
-                    all_runs_1000.get('auc_absbest').append(auc_abs_best)
-                    all_runs_1000.get('max_sic_absbest').append(max_sic_abs_best)
+                        all_runs_1000.get('auc_absbest').append(auc_abs_best)
+                        all_runs_1000.get('max_sic_absbest').append(max_sic_abs_best)
 
-                    all_runs_1000.get('epoch_auc_best').append(epoch_best_auc)
-                    all_runs_1000.get('epoch_max_sic_best').append(epoch_best_max_sic_best)
+                        all_runs_1000.get('epoch_auc_best').append(epoch_best_auc)
+                        all_runs_1000.get('epoch_max_sic_best').append(epoch_best_max_sic_best)
 
-                    all_runs_1000.get('auc_ens').append(auc_score_ens)
-                    all_runs_1000.get('max_sic_ens').append(max_sic_ens)
-
-                    fine,hlf,schedule=GetVars(model_dir)
-                    all_runs_1000.get('fine').append(fine)
-                    all_runs_1000.get('hlf').append(hlf)
-                    all_runs_1000.get('schedule').append(schedule)
+                        fine,hlf,schedule=GetVars(model_dir)
+                        all_runs_1000.get('fine').append(fine)
+                        all_runs_1000.get('hlf').append(hlf)
+                        all_runs_1000.get('schedule').append(schedule)
 
 
                     
@@ -536,10 +521,10 @@ all_runs_frame_1000.to_csv('./AnomalyDetectionResults/IdealizedClasifitaction/re
 all_runs_frame_2000=pd.DataFrame(all_runs_2000)
 all_runs_frame_2000.to_csv('./AnomalyDetectionResults/IdealizedClasifitaction/results_2000sij_RUNS_'+str(first_run)+'_'+str(last_run)+'.txt',index=False)
 
-exit()
+
 rocs_frame=pd.DataFrame(rocs)
 
-top_runs=all_runs_frame_1000.nlargest(1, 'max_sic_best')
+top_runs=all_runs_frame_1000.nlargest(13, 'max_sic_best')
 
 print(top_runs)
 
@@ -560,7 +545,7 @@ def PlotTopAUC(fpr,tpr,run,auc,max_sic):
 
 for run in top_runs['RUN']:
 
-    main_result_dir='//net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run)+'/'
+    main_result_dir='//net/data_ttk/hreyes/LHCO/IdealizedClasifitaction/RUN'+str(run)+'/'
     results_dirs=os.listdir(main_result_dir+model_types.get(model_type))
     for result in results_dirs:
 
@@ -583,7 +568,7 @@ print(top_runs)
 plot_title='CLS head - signal injection = supervised - top 5 (SIC  best)'
 plt.legend()
 plt.title(plot_title)
-plt.savefig('./AnomalyDetectionResults/IdealizedClasifitaction/roc_curve_RUNS_'+str(first_run)+'_'+str(last_run)+'_SIC_best.png')
+plt.savefig('./AnomalyDetectionResults/Supervised/roc_curve_RUNS_'+str(first_run)+'_'+str(last_run)+'_SIC_best.png')
 plt.close()
 
 
@@ -612,14 +597,14 @@ def PlotCustom(fpr,tpr,df):
 
     return
 
-main_dir='./AnomalyDetectionResults/IdealizedClasifitaction/'
+main_dir='./AnomalyDetectionResults/Supervised/'
 file_name=main_dir+'/results_1000sij_RUNS_101_113.txt'
 plt.close()
-for run in range(first_run,last_run):
+for run in range(101,103):
 
     
 
-    main_result_dir='//net/data_ttk/hreyes/LHCO/IdealClassification/RUN'+str(run)+'/'
+    main_result_dir='//net/data_ttk/hreyes/LHCO/Supervised/RUN'+str(run)+'/'
     results_dirs=os.listdir(main_result_dir+model_types.get(model_type))
     for result in results_dirs:
 
@@ -629,8 +614,8 @@ for run in range(first_run,last_run):
         #try:
         model_dir=main_result_dir+model_types.get(model_type)+'/'+result
 
-        
-        
+        TestAgain(model_dir,model_name_test='ensemble')
+        exit()
         r_tresh=.5
             
         tpr=rocs.get('tpr_best')[run-101]
@@ -668,5 +653,6 @@ plt.legend(handles=handles)
 plt.title(plot_title)
 plt.savefig(main_dir+'/roc_curve_RUNS_101_113_custom.png')
 plt.close()
+
 
 '''
