@@ -23,90 +23,27 @@ paths = {"ttbar/train": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_train___1Mfrome
         "qcd_aachen": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/"),
         "qcd_aachen/train": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/train.h5"),
         "qcd_aachen/test": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/test.h5"),
-        "qcd_aachen/val": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/val.h5")}
-
-def test_models(pattern="", N=1000_000, dry=False):
-    models_best = list(walk_dir(pattern + r".*model_best\.pt$"))
-    preds_best = [max(walk_dir(f"tests/{torch.load(x, 'cpu').global_step}.*npz", x.parent))
-                  for x in models_best]
-    for model, pred in zip(models_best, preds_best):
-        if str(N) not in str(pred):
-            if dry: 
-                print(model)
-            else:
-                model = torch.load(
-                model, "cpu")
-                model.test_model(N)
-                
-
-def test_jet_gradients(model, n=1):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    model.to(device)
-    model.eval()
-
-    test_loader = list(get_dataloader(
-        model.bg_file, model.sig_file, n,
-        model.num_const, 1, 0, train=False
-    ))
-    np.random.shuffle(test_loader)
-
-    jets, paddings, labels, gradients = [], [], [], []
-
-    for jet, padding, label in tqdm(test_loader):
-        jet = jet.to(device)
-        padding = padding.to(device)
-        label = label.to(device)
-
-        y = model(jet, padding)
-
-        gradient = torch.zeros_like(jet, dtype=torch.float, device=device)
-
-        for const in range(jet.shape[-2]):
-            if padding[0, const]: continue  # Skip padded
-
-            for feature in range(jet.shape[-1]):
-                jet_prime = jet.detach().clone()
-
-                sign = +1
-                value = jet[0, const, feature]
-                if (feature == 0 and value == 40) or (feature != 0 and value == 30):
-                    jet_prime[0, const, feature] -= 1
-                    sign = -1
-                else:
-                    jet_prime[0, const, feature] += 1
-
-                with torch.no_grad():
-                    y_prime = model(jet_prime, padding)
-
-                gradient[0, const, feature] = sign * (y - y_prime).item()
-
-        jets.append(jet[0].cpu().numpy())
-        paddings.append(padding[0].cpu().numpy())
-        labels.append(label[0].cpu().numpy())
-        gradients.append(gradient[0].cpu().numpy())
-
-    jets = np.asarray(jets)
-    paddings = np.asarray(paddings)
-    labels = np.asarray(labels)
-    gradients = np.asarray(gradients)
-
-    filename = f"{model.dir}/tests/{model.global_step}_{model.global_epoch}/gradients_{n}"
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    np.savez(filename, jets=jets, paddings=paddings, labels=labels, gradients=gradients)
-    print(f"Gradients saved as: '{filename}.npz'")
-       
-        
-
+        "qcd_aachen/val": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/val.h5")}      
+  
+  
 def main():    
-    backbone = "/net/data_ttk/lcordes/ZToNuNu_copy/model_best.pt"
-    src = Path("/net/data_ttk/lcordes/classifier_var_heads/QCD_vs_Aachen")
-    
-    model = torch.load(src / "NormalHead/model_last.pt")
-    model.train_model(epochs=30, num_events=194350, num_events_test=64784, lr=1e-4, min_lr=2e-7, scheduler="Constant")
-    
-    
-    
+    for model in walk_dir(
+        pattern=r".*model_last\.pt$", 
+        dir=r"/net/data_ttk/lcordes/double_descend/train_models_no_backbone"
+    ):
+        model = torch.load(model, "cpu")
+
+        if model.global_epoch==30 and None:
+            model.train_model(
+                num_events=int(model.dir.name),
+                epochs=30,
+                checkpoint=False,
+                num_events_test=0,
+                logging_steps=1, 
+                dropout_p=0,
+                scheduler="Constant"
+            )
+
 if __name__=="__main__":
     t0 = time.time()
     main()

@@ -1,7 +1,8 @@
-__all__ = ['pd', 'np', 'plt', 'pprint', 'color', 're', 'tex2uni', 'integrate', 'curve_fit', 'c', 'stats', 'CubicSpline', 'u', 'ufloat', 'split', 'ev', 'std', 'tag', 'weighted_mean', 'plots_path', 'latex_path', 'plot', 'format_number', 'table', 'sqrt', 'pi', 'abs', 'sin', 'cos', 'tan', 'arccos', 'arcsin', 'arctan', 'exp', 'log', 'deg2rad', 'rad2deg', 'vectorize', 'un', 'unp', 'flat', 'data_path', 'fn', 'language', 'Iterable', 'plotter']
+__all__ = ['pd', 'np', 'plt', 'pprint', 'color', 're', 'tex2uni', 'integrate', 'curve_fit', 'c', 'stats', 'CubicSpline', 'u', 'ufloat', 'split', 'ev', 'std', 'tag', 'weighted_mean', 'plots_path', 'tables_path', 'plot', 'format_number', 'table', 'sqrt', 'pi', 'abs', 'sin', 'cos', 'tan', 'arccos', 'arcsin', 'arctan', 'exp', 'log', 'deg2rad', 'rad2deg', 'vectorize', 'un', 'unp', 'flat', 'data_path', 'fn', 'language', 'Iterable', 'plotter']
 
 from numpy import sqrt,pi,abs,sin,cos,tan,arccos,arcsin,arctan,exp,log,deg2rad,rad2deg,vectorize
 import numpy as np
+from pathlib import Path
 
 import pandas as pd
 
@@ -98,7 +99,7 @@ weighted_mean = lambda x: u(
 )  # sum(mu_i / sigma_i**2) / sum(1/sigma_i**2)
 
 plots_path = "./plots/"
-latex_path = "./latex/"
+tables_path = "./latex/"
 data_path = "./data/"
 language = "de" # de/en
  
@@ -215,7 +216,10 @@ def format_number(x, fmt=None, udigits=2, fdigits=3, fformat="nice", latex=False
 fn = format_number
 
 
-def table(data, headers=None, index_column=None, fmt=None, filename=None, caption=None, show=True, show_latex=False, table_option="H", compact=True, head=None, sort_by_col=False, reverse_sort=False):
+def table(data, headers=None, index_column=None, fmt=None, filename=None, caption=None, show=True, show_latex=False, table_option="H", compact=True, head=None, sort_by_col=False, reverse_sort=False, filepath=None, udigits=2, fdigits=3):
+    """ filename with .tex ending!
+        fmt: len(fmt) == len(data), pad with None if no formatting is necessary
+    """
     if not isinstance(data[0],Iterable): data = np.array(data)[:,None]
     
     # throw helpful errors 
@@ -252,7 +256,7 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
         if headers is not None: headers = np.insert(headers, 0, extra_header)
         
     if show:
-        data_ = np.transpose([[fn(x, fmt[i] if fmt is not None else None) for x in col] for i,col in enumerate(data)])
+        data_ = np.transpose([[fn(x, fmt[i] if fmt is not None else None, udigits=udigits, fdigits=fdigits) for x in col] for i,col in enumerate(data)])
         if headers is not None: headers_ = [color.fx.bold(tex2uni(header)) for header in headers]
         
         table_str = tabulate(data_, headers_ if headers is not None else [], "rounded_outline")
@@ -260,7 +264,7 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
         if caption: print(color.fg.boldred(f"{f'<{tex2uni(caption)}>':^{table_len}}"))
         print(table_str)
     
-    if filename or show_latex:
+    if filename or filepath or show_latex:
         data_ = [[fn(x, fmt[i] if fmt is not None else None, latex=True) for x in col] for i,col in enumerate(data)]
         
         widths = [max(map(len,col)) for col in data_]
@@ -300,7 +304,7 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
     table_option=table_option,
     columns='l' * len(data),
     caption=caption,
-    label=filename.split(".")[0] if filename else "<filename>",
+    label=filename.split(".")[0] if filename else Path(filepath).name.split(".")[0] if filepath else "<filename>",
     headers=(headers_ + r"\\" if headers_ else ""),
     ncol=len(data),
     cont_label=("" if compact else 
@@ -313,6 +317,7 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
 )
 
     if show_latex: print(table)
-    if filename: 
-        with open(latex_path + filename, "w") as file:
+    if filename or filepath: 
+        filepath = tables_path + filename if filename else filepath
+        with open(filepath, "w") as file:
                 file.writelines(table)

@@ -17,6 +17,10 @@ import datetime
 import time
 from tabulate import tabulate
 import copy
+import json
+import functools
+import inspect
+
 
 import torch
 import torch.nn as nn
@@ -51,6 +55,13 @@ class vdict(dict):
         return dict.__getitem__(self, key)
 
 
+def reduce(x, length):
+    assert len(x)>=length
+    idx = np.linspace(0, len(x), length+1, dtype=int)
+    out = [np.mean(x[idx[i]: idx[i+1]]) for i in range(len(idx)-1)]
+    return np.array(out)
+
+
 def walk_dir(pattern=r".*model_best\.pt$", dir=r"/net/data_ttk/lcordes/classifier_var_heads"):
     for dirpath, dirnames, filenames in os.walk(dir):
         for dirname in dirnames:
@@ -60,13 +71,50 @@ def walk_dir(pattern=r".*model_best\.pt$", dir=r"/net/data_ttk/lcordes/classifie
             if re.search(pattern, dirpath + "/" + filename):
                 yield Path(dirpath) / filename
 
+def select_max(dir, prefix=None):
+    """selects the file or folder with the maximum global_step (non-recursive!)
+    dir: looks here for files/dirs
+    prefix: filters for paths with correct prefix. expected paths are: ".../<prefix>_<global_step>_..."
+    """
+    paths = list(Path(dir).iterdir())
+    if prefix: 
+        paths = [x for x in paths
+                 if prefix==x.name.split("_")[0]]
+    assert np.any(paths), f"No files/folders in dir matching prefix '{prefix}'\npaths are: {paths}"
+    matches = [re.search(r"\d+", x.name) for x in paths]
+    matches = [int(x.group()) if x else np.nan for x in matches]
+    return paths[np.nanargmax(matches)]
+
+def logger(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        sig = inspect.signature(f)
+        bound = sig.bind_partial(*args, **kwargs)
+        bound.apply_defaults()
+        
+        log_data = {
+            "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "params": {k: str(v) for k, v in bound.arguments.items()}
+        }
+        
+        dir_path = Path(bound.arguments["dir"])
+        dir_path.mkdir(exist_ok=True, parents=True)
+        
+        with open(dir_path / "args.jsonl", "a") as file:
+            file.write(json.dumps(log_data) + "\n")
+        
+        return f(*args, **kwargs)
+    return wrapper
+
 class h:
     def bins2values(binned_data, bins):
-        bins = [np.nan, *bins[:-1], np.nan]
-        binned_data, bins = np.asarray(binned_data), np.asarray(bins)
-        return bins[binned_data]
+        binned_data, bins = np.asarray(binned_data), np.asarray(bins).reshape(-1)
+        vals = 1/2 * np.array([np.nan, *(bins[:-1] + bins[1:]), np.nan])
+        return vals[binned_data.reshape(-1)].reshape(binned_data.shape)
     
-    denan = lambda x: x[x!=np.nan]
+    def denan(x):
+        x = np.asarray(x)
+        return x[x!=np.nan]
     
     def load_data(path, N):
         data = []
