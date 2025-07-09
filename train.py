@@ -58,7 +58,8 @@ if __name__ == "__main__":
 
     # construct model
     if args.contin:
-        model = load_model(log_dir=args.model_path)
+        # model = load_model(log_dir=args.model_path)
+        model = load_model(args.model_path)
         print("Loaded model")
     else:
         model = JetTransformer(

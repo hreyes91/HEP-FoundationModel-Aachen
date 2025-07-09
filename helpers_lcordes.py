@@ -1,50 +1,5 @@
-import numpy as np
-from numpy import cos,cosh,sin,sinh,tan,tanh,pi,log,exp,sqrt
-np.seterr(divide='ignore')
-import pandas as pd 
-import matplotlib.pyplot as plt
-import scipy.ndimage
-import sklearn
-from pathlib import Path
-import pathlib
-import os
-import sklearn.metrics
-from praktikum import *
-from tqdm.auto import tqdm
-import re
-import contextlib
-import datetime
-import time
-from tabulate import tabulate
-import copy
-import json
-import functools
-import inspect
-
-
-import torch
-import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import TensorDataset, DataLoader
-from model import JetTransformer
-
-
-plots_path  = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/code/plots/"
-tables_path = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/code/tables/"
-
-plt.rcParams.update(
-    {
-        "xtick.top": True,
-        "ytick.right": True,
-        "xtick.minor.visible": True,
-        "ytick.minor.visible": True,
-        "xtick.direction": "in",
-        "ytick.direction": "in",
-        "axes.labelsize": "large",
-        "text.usetex": False,
-        "font.size": 10,
-    }
-)
+from namespace import * 
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 bf = lambda x: "$\\mathbf{" + x.replace(" ", "\\ ") + "}$"
 
@@ -70,7 +25,7 @@ def walk_dir(pattern=r".*model_best\.pt$", dir=r"/net/data_ttk/lcordes/classifie
         for filename in filenames:
             if re.search(pattern, dirpath + "/" + filename):
                 yield Path(dirpath) / filename
-
+                
 def select_max(dir, prefix=None):
     """selects the file or folder with the maximum global_step (non-recursive!)
     dir: looks here for files/dirs
@@ -84,6 +39,49 @@ def select_max(dir, prefix=None):
     matches = [re.search(r"\d+", x.name) for x in paths]
     matches = [int(x.group()) if x else np.nan for x in matches]
     return paths[np.nanargmax(matches)]
+
+def get_metrics(filenames, switch=False, signal_eff=0.3):
+    """ returns aucs, bg_rejection, accuracy, epochs of best model
+    """
+    shape = np.shape(filenames)
+    filenames = np.reshape(filenames, -1)
+    
+    epochs = []
+    pred_files = []    
+    for filename in filenames:
+        model = torch.load(filename, "cpu")
+        epochs.append(model.global_epoch)
+        tests_folder = Path(filename).parent / f"tests/{model.global_step}_{model.global_epoch}"
+        pred_files.append(select_max(tests_folder, "predictions"))
+        
+    aucs, bg_rejection, accuracy = [], [], []
+    for pred_file in pred_files:
+        data = np.load(pred_file)
+        preds = (data["predictions"]).flatten()
+        labels = data["labels"].flatten().astype(bool) ^ switch 
+        accuracy.append(1 - np.abs(np.round(preds) - labels).sum() / len(labels))
+
+        fpr, tpr, _ = sklearn.metrics.roc_curve(labels, preds)
+        roc_auc = sklearn.metrics.auc(fpr, tpr)
+        
+        aucs.append(roc_auc)
+        bg_rejection.append(1/fpr[np.argmin(np.abs(tpr - signal_eff))])
+    
+    return [np.reshape(aucs, shape), 
+            np.reshape(bg_rejection, shape), 
+            np.reshape(accuracy, shape),
+            np.reshape(epochs, shape),
+            ]
+    
+def select_max_auc(pattern="", dir="/net/data_ttk/lcordes/test_heads_and_protocols/Aachen/TTBar_Backbone"):
+    pattern = pattern + ".*/model_best\.pt$"
+    models = np.array(list(walk_dir(pattern=pattern, dir=dir)))
+    aucs = get_metrics(models)[0]
+    return models[np.argmax(aucs)]
+
+def select_pred(model):
+    model = torch.load(str(model), "cpu")
+    return select_max(model.dir / "tests" / f"{model.global_step}_{model.global_epoch}")
 
 def logger(f):
     @functools.wraps(f)
@@ -305,5 +303,104 @@ class h:
         for df,label in zip(dfs_split, ["train", "val", "test"]):
             destination = destination_folder.joinpath(label + ".h5")
             df.to_hdf(destination, key="discretized", mode="w")
+
+
+# Attention Rollout
+from heads_lcordes import CLSTokenHead
+
+def patch_transformer(transformer):
+    def patch_attention(m):
+        forward_orig = m.forward
+
+        def wrap(*args, **kwargs):
+            kwargs["need_weights"] = True
+            kwargs["average_attn_weights"] = False
+
+            return forward_orig(*args, **kwargs)
+
+        m.forward = wrap
+
+    class SaveOutput:
+        def __init__(self):
+            self.outputs = [] # [jet, heads, seq_len, seq_len]
+
+        def __call__(self, module, module_in, module_out):
+            self.outputs.append(module_out[1][0].detach())
+
+        def clear(self):
+            self.outputs = []
             
+    save_outputs = []
+    for i in range(len(transformer.layers)):
+        save_outputs.append(SaveOutput())
+        patch_attention(transformer.layers[i].self_attn)
+        transformer.layers[i].self_attn.register_forward_hook(save_outputs[-1])
+        
+    if isinstance(transformer.head, CLSTokenHead):
+        for i in range(len(transformer.head.transformer.layers)):
+            save_outputs.append(SaveOutput())
+            patch_attention(transformer.head.transformer.layers[i].self_attn)
+            transformer.head.transformer.layers[i].self_attn.register_forward_hook(save_outputs[-1])
+        
+    return save_outputs
+
+def get_attn(model, num_events = 100):
+    """ attn.shape = [layer, jet, heads, seq_len, seq_len]
+    """
+    model = torch.load(model, "cpu")
+
+    save_outputs = patch_transformer(model)
+    jets, paddings, labels = [], [], []
+    for jet, padding, label in tqdm(
+        model.get_dataloader(num_events=num_events,batch_size=1,train=False,num_workers=0)
+        ):
+        jets.append(jet.numpy())
+        paddings.append(padding.numpy())
+        labels.append(label.numpy())
+        _ = model(jet, padding)
+        
+    attn = [x.outputs for x in save_outputs]
+    return attn, jets, paddings, labels
+
+def augment_attn(attn, bb_layers=8):
+    augmented_attn = np.zeros((len(attn), len(attn[0]), len(attn[0][0]), len(attn[0][0][0])+1, len(attn[0][0][0])+1))
+    print(augmented_attn.shape)
+    augmented_attn[..., 0, 0] = 1
+    augmented_attn[:bb_layers, ..., 1:, 1:] = attn[:bb_layers]
+    augmented_attn[bb_layers:, ...] = attn[bb_layers:]
     
+    return augmented_attn
+
+def get_attn_rollouts(attn, paddings, alpha=0.2):
+    """ rollouts: [jet, seq_len, seq_len]
+    """
+    head_avg = attn.mean(2)   # [layers, jet, seq_len, seq_len]
+    n_const = (~np.array(paddings)).sum(-1).sum(-1)
+
+    rollouts = []
+    for b in range(head_avg.shape[1]):
+        rollout = np.eye(head_avg.shape[-1])
+        for l in range(head_avg.shape[0]):
+            A = head_avg[l, b]
+            A_aug = alpha * A + (1 - alpha) * np.eye(A.shape[0])
+            A_aug = A_aug / A_aug.sum(-1, keepdims=True)
+            rollout = A_aug @ rollout
+        rollouts.append(rollout)
+
+    rollouts = np.stack(rollouts, axis=0)  
+    return rollouts # [jet, seq_len, seq_len]
+
+def gensave_rollouts(model, num_events=10_000, alpha=0.2):
+    """ saved as: <model_dir>/tests/<global_step>_<global_epoch>/rollouts_<alpha>_<num_events>.npz
+    """
+    attn, jets, paddings, labels = get_attn(model, num_events)
+    aug_attn = augment_attn(attn, bb_layers=8)
+    rollouts = get_attn_rollouts(aug_attn, paddings, alpha)
+    
+    m = torch.load(model, "cpu")
+    filename = m.dir / "tests" / f"{m.global_step}_{m.global_epoch}" / f"rollouts_{alpha}_{num_events}"
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    np.savez(filename, rollouts=rollouts, aug_attn=aug_attn, jets=jets, paddings=paddings, labels=labels)
+    print(f"Rollouts saved as: '{filename}.npz'")
+    
+    return f"{filename}.npz"

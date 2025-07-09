@@ -98,10 +98,10 @@ weighted_mean = lambda x: u(
     np.sqrt(1 / np.sum(1 / std(x) ** 2)),
 )  # sum(mu_i / sigma_i**2) / sum(1/sigma_i**2)
 
-plots_path = "./plots/"
-tables_path = "./latex/"
+plots_path  = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/code/plots/"
+tables_path = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/code/tables/"
+language = "en" # de/en
 data_path = "./data/"
-language = "de" # de/en
  
 def plot(f):
     def wrapper(*args, **kwargs_):
