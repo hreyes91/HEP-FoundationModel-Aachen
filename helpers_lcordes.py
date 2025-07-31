@@ -133,33 +133,36 @@ class h:
         l += offset * np.diff(l) * [-1,1]
         return l 
 
-    def info(filepaths, N=6):
+    def info(filepaths, N=6, preview=True):
         for filepath in np.atleast_1d(filepaths):
             size_MB = os.path.getsize(filepath) / 1024**2
-            try:
-                keys, shapes, columns, values = [], [], [], []
-                store = pd.HDFStore(filepath, mode='r',)
-                for key in store.keys():
-                    df = store.get(key)
-                    keys.append(key)
-                    shapes.append(df.shape)
-                    columns.append(list(df.columns))
-                    if df.empty:
-                        values.append(["<empty>"])
-                    elif df.shape[1] == 1:
-                        values.append(list(df.iloc[:min(N+1, df.shape[0]), 0]))
-                    else:
-                        values.append(list(df.iloc[0, :min(N+1, df.shape[1])]))
-                store.close()
-                
-                columns = [" ".join(np.vectorize(str)([*(x[:N]), "..."] if len(x)>N else x)) for x in columns]
-                values = [" ".join([*x[:N], "..."] if len(x)>N else x) for x in [vectorize(fn)(v) for v in values]]
-                table([keys, shapes, columns, values],
-                    ["keys", "shape", "columns", "values"],
-                    True, caption=f"info for {filepath} ({fn(size_MB)} MB)")
-            except:
-                data = np.asarray(pd.read_hdf(filepath, key="table"))
-                print(f"{color.fg.boldred(f'<info for {filepath} ({fn(size_MB)} MB)>')}\nshape of \\table: {data.shape}\n")
+            if preview:
+                try:
+                    keys, shapes, columns, values = [], [], [], []
+                    store = pd.HDFStore(filepath, mode='r',)
+                    for key in store.keys():
+                        df = store.get(key)
+                        keys.append(key)
+                        shapes.append(df.shape)
+                        columns.append(list(df.columns))
+                        if df.empty:
+                            values.append(["<empty>"])
+                        elif df.shape[1] == 1:
+                            values.append(list(df.iloc[:min(N+1, df.shape[0]), 0]))
+                        else:
+                            values.append(list(df.iloc[0, :min(N+1, df.shape[1])]))
+                    store.close()
+                    
+                    columns = [" ".join(np.vectorize(str)([*(x[:N]), "..."] if len(x)>N else x)) for x in columns]
+                    values = [" ".join([*x[:N], "..."] if len(x)>N else x) for x in [vectorize(fn)(v) for v in values]]
+                    table([keys, shapes, columns, values],
+                        ["keys", "shape", "columns", "values"],
+                        True, caption=f"info for {filepath} ({fn(size_MB)} MB)")
+                    return
+                except:
+                    ...
+            data = np.asarray(pd.read_hdf(filepath, key="table"))
+            print(f"{color.fg.boldred(f'<info for {filepath} ({fn(size_MB)} MB)>')}\nshape of \\table: {data.shape}\n")
             
     def preprocess_data(sources, destination_folder, filename, split=[60,20,20], report=False):
         """ 
@@ -246,7 +249,7 @@ class h:
                 destination = prep_dir.joinpath(label + "_" + filename)
                 np.save(destination, bins)
                 
-        features = np.hstack([calculate_features(source) for source in sources],)
+        features = np.hstack([calculate_features(source) for source in np.atleast_1d(sources)],)
         
         if report: print("\n"+color.fg.boldblue(f"<populating {destination_folder}, with {len(features[0])} jets total>"))
         
@@ -254,8 +257,7 @@ class h:
         disc_data = discretize(features, bins)
         save(disc_data, bins, split, destination_folder, filename)
    
-    paths = vdict({
-        "ttbar/train": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_train___1Mfromeach_403030.h5"),
+    paths = vdict({"ttbar/train": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_train___1Mfromeach_403030.h5"),
         "ttbar/test": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_test___1Mfromeach_403030.h5"),
         "ttbar/val": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_val___1Mfromeach_403030.h5"),
         "ttbar/samples": Path(r"/net/data_ttk/lcordes/TTBar_500k/samples_100k.h5"),
@@ -264,28 +266,16 @@ class h:
         "z/test": Path(r"/net/data_ttk/hreyes/OneBin/ZJetsToNuNu_test___1Mfromeach_403030.h5"),
         "z/val": Path(r"/net/data_ttk/hreyes/OneBin/ZJetsToNuNu_val___1Mfromeach_403030.h5"),
         
-        "qcd": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd/"),
-        "qcd/train": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd/train_qcd_disc.h5"),
-        "qcd/test": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd/test_qcd_disc.h5"),
-        "qcd/val": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd/val_qcd_disc.h5"),
+        "qcd": Path(r"/net/data_ttk/lcordes/redo/semi-visible/qcd"),
+        "qcd/train": Path(r"/net/data_ttk/lcordes/redo/semi-visible/qcd/train_qcd.h5"),
+        "qcd/test": Path(r"/net/data_ttk/lcordes/redo/semi-visible/qcd/test_qcd.h5"),
+        "qcd/val": Path(r"/net/data_ttk/lcordes/redo/semi-visible/qcd/val_qcd.h5"),
         
-        "aachen": Path(r"/net/data_ttk/lcordes/Semi-Visible/aachen/"),
-        "aachen/train": Path(r"/net/data_ttk/lcordes/Semi-Visible/aachen/train_aachen_disc.h5"),
-        "aachen/test": Path(r"/net/data_ttk/lcordes/Semi-Visible/aachen/test_aachen_disc.h5"),
-        "aachen/val": Path(r"/net/data_ttk/lcordes/Semi-Visible/aachen/val_aachen_disc.h5"),
-        
-        "qcd_aachen": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/"),
-        "qcd_aachen/train": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/train.h5"),
-        "qcd_aachen/test": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/test.h5"),
-        "qcd_aachen/val": Path(r"/net/data_ttk/lcordes/Semi-Visible/qcd_aachen_joined/val.h5"),
-        
-        "ttbar_classifier": Path(r"/net/data_ttk/lcordes/TTBar_ZToNuNu_classifier_1m_10e"),
-        "aachen_classifier": Path(r"/net/data_ttk/lcordes/QCD_Aachen_classifier_1m_10e"),
-        
-        
-        "ttbar_classifier_backbone": Path(r"/net/data_ttk/lcordes/TTBar_ZToNuNu_classifier_from_backbone_100k_10e"),
-        # "aachen_classifier_backbone": Path(r"/net/data_ttk/lcordes/QCD_Aachen_classifier_1m_10e"),
-    })
+        "aachen": Path(r"/net/data_ttk/lcordes/redo/semi-visible/aachen"),
+        "aachen/train": Path(r"/net/data_ttk/lcordes/redo/semi-visible/aachen/train_aachen.h5"),
+        "aachen/test": Path(r"/net/data_ttk/lcordes/redo/semi-visible/aachen/test_aachen.h5"),
+        "aachen/val": Path(r"/net/data_ttk/lcordes/redo/semi-visible/aachen/val_aachen.h5")
+        })
     
     def join_datasets(sources, destination_folder, split=(60,20,20)):
         df = pd.DataFrame()
@@ -346,17 +336,20 @@ def patch_transformer(transformer):
 
 def get_attn(model, num_events = 100):
     """ attn.shape = [layer, jet, heads, seq_len, seq_len]
+        jets = [jet, const, feature]
+        paddings = [jet, const]
+        labels = [jet]
     """
     model = torch.load(model, "cpu")
 
     save_outputs = patch_transformer(model)
     jets, paddings, labels = [], [], []
     for jet, padding, label in tqdm(
-        model.get_dataloader(num_events=num_events,batch_size=1,train=False,num_workers=0)
+        model.get_dataloader(num_events=num_events,batch_size=1,train=False,  num_workers=0)
         ):
-        jets.append(jet.numpy())
-        paddings.append(padding.numpy())
-        labels.append(label.numpy())
+        jets.append(jet[0].numpy())
+        paddings.append(padding[0].numpy())
+        labels.append(label[0].numpy())
         _ = model(jet, padding)
         
     attn = [x.outputs for x in save_outputs]
@@ -364,7 +357,6 @@ def get_attn(model, num_events = 100):
 
 def augment_attn(attn, bb_layers=8):
     augmented_attn = np.zeros((len(attn), len(attn[0]), len(attn[0][0]), len(attn[0][0][0])+1, len(attn[0][0][0])+1))
-    print(augmented_attn.shape)
     augmented_attn[..., 0, 0] = 1
     augmented_attn[:bb_layers, ..., 1:, 1:] = attn[:bb_layers]
     augmented_attn[bb_layers:, ...] = attn[bb_layers:]
@@ -390,17 +382,36 @@ def get_attn_rollouts(attn, paddings, alpha=0.2):
     rollouts = np.stack(rollouts, axis=0)  
     return rollouts # [jet, seq_len, seq_len]
 
-def gensave_rollouts(model, num_events=10_000, alpha=0.2):
+def gensave_rollouts(model, num_events=10_000, alpha=0.8):
     """ saved as: <model_dir>/tests/<global_step>_<global_epoch>/rollouts_<alpha>_<num_events>.npz
+    labels: rollouts [jet, const, const] (with cls_attn = rollouts[:, 0, :])
+            jets [jet, const, feature]
+            paddings [jet, const]
+            labels [jet]
     """
+    alpha = np.atleast_1d(alpha)
     attn, jets, paddings, labels = get_attn(model, num_events)
     aug_attn = augment_attn(attn, bb_layers=8)
-    rollouts = get_attn_rollouts(aug_attn, paddings, alpha)
     
-    m = torch.load(model, "cpu")
-    filename = m.dir / "tests" / f"{m.global_step}_{m.global_epoch}" / f"rollouts_{alpha}_{num_events}"
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    np.savez(filename, rollouts=rollouts, aug_attn=aug_attn, jets=jets, paddings=paddings, labels=labels)
-    print(f"Rollouts saved as: '{filename}.npz'")
+    for alpha in alpha:
+        rollouts = get_attn_rollouts(aug_attn, paddings, alpha)
+        
+        m = torch.load(model, "cpu")
+        filename = m.dir / "tests" / f"{m.global_step}_{m.global_epoch}" / f"rollouts_{alpha}_{num_events}"
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        np.savez(filename, rollouts=rollouts, jets=jets, paddings=paddings, labels=labels)
+        print(f"Rollouts saved as: '{filename}.npz'")
     
     return f"{filename}.npz"
+
+import scipy
+def odr(x, y, p0=[1,0]):
+    def lin_func(B, x):
+        return B[0] * x + B[1]
+
+    model = scipy.odr.Model(lin_func)
+    data = scipy.odr.RealData(x, y)
+    odr = scipy.odr.ODR(data, model, beta0=p0)
+    
+    out = odr.run()
+    return out.beta

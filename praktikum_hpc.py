@@ -1,4 +1,4 @@
-__all__ = ['pd', 'np', 'plt', 'pprint', 'color', 're', 'tex2uni', 'integrate', 'curve_fit', 'c', 'stats', 'CubicSpline', 'u', 'ufloat', 'split', 'ev', 'std', 'tag', 'weighted_mean', 'plots_path', 'tables_path', 'plot', 'format_number', 'table', 'sqrt', 'pi', 'abs', 'sin', 'cos', 'tan', 'arccos', 'arcsin', 'arctan', 'exp', 'log', 'deg2rad', 'rad2deg', 'vectorize', 'un', 'unp', 'flat', 'data_path', 'fn', 'language', 'Iterable', 'plotter']
+__all__ = ['pd', 'np', 'plt', 'pprint', 'color', 're', 'tex2uni', 'integrate', 'curve_fit', 'c', 'stats', 'CubicSpline', 'u', 'ufloat', 'split', 'ev', 'std', 'tag', 'weighted_mean', 'plots_path', 'tables_path', 'plot', 'format_number', 'table', 'sqrt', 'pi', 'abs', 'sin', 'cos', 'tan', 'arccos', 'arcsin', 'arctan', 'exp', 'log', 'deg2rad', 'rad2deg', 'vectorize', 'un', 'unp', 'flat', 'data_path', 'fn', 'language', 'Iterable', 'plotter', "pretty_exponent"]
 
 from numpy import sqrt,pi,abs,sin,cos,tan,arccos,arcsin,arctan,exp,log,deg2rad,rad2deg,vectorize
 import numpy as np
@@ -99,7 +99,7 @@ weighted_mean = lambda x: u(
 )  # sum(mu_i / sigma_i**2) / sum(1/sigma_i**2)
 
 plots_path  = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/code/plots/"
-tables_path = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/code/tables/"
+tables_path = r"/home/home3/institut_thp/lcordes/Bachelor_Thesis/latex/tables/"
 language = "en" # de/en
 data_path = "./data/"
  
@@ -138,6 +138,10 @@ def plot(f):
                 plt.suptitle(value)
             elif key == "bfsuptitle":
                 plt.suptitle(r"$\mathbf{" + value.replace(" ", r"\ ") + r"}$")
+            elif key == "supxlabel":
+                plt.gcf().supxlabel(value)
+            elif key == "supylabel":
+                plt.gcf().supylabel(value)
             elif key == "grid":
                 plt.grid(linestyle="--", alpha=0.5)
             elif key == "legend":
@@ -177,28 +181,44 @@ def plot(f):
 plotter = lambda **kwargs: plot(lambda: ...)(**{**kwargs, "show": False, "close": False})
 
 def pretty_exponent(x):
-    exp_map = str.maketrans("0123456789-","⁰¹²³⁴⁵⁶⁷⁸⁹⁻")
+    SUPERSCRIPT_FROM = r"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQTUVWXYZ+-=()"
+    SUPERSCRIPT_TO = r"⁰¹²³⁴⁵⁶⁷⁸⁹ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖ۹ʳˢᵗᵘᵛʷˣʸᶻᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᵀᵁⱽᵂˣʸᶻ⁺⁻⁼⁽⁾" 
+    exp_map = str.maketrans(SUPERSCRIPT_FROM, SUPERSCRIPT_TO)
     
-    # latex to unicode
-    match = re.search(r"\^\{\+?(-?\d+)\}", x)
-    if match:
-        exp = match.group(1).translate(exp_map)
-        x = re.sub(r"\^\{\+?(-?\d+)\}", exp, x)
-        x = pretty_exponent(x)
-        
-    # e-13 to unicode 
-    match = re.search(r"e\+?0*(-?\d+)", x)
-    if match:
-        exp = match.group(1).translate(exp_map)
-        x = re.sub(r"e\+?0*(-?\d+)", exp, x)
-        x = pretty_exponent(x)
+    SUBSCRIPT_FROM = "0123456789aehijklmnoprstuvx+-=()"
+    SUBSCRIPT_TO = "₀₁₂₃₄₅₆₇₈₉ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ₊₋₌₍₎"
+    subscript_map = str.maketrans(SUBSCRIPT_FROM, SUBSCRIPT_TO) 
+    
+    # latex-exponents like ^{+012} oder ^{-03}
+    x = re.sub(
+        r"\^\{\s*\+?(-?)(0*)(\d+)\s*\}",
+        lambda m: (m.group(1) + m.group(3)).translate(exp_map),
+        x)
+    
+    # general latex superscripts like ^{(1)} or ^{a + b}
+    x = re.sub(
+        rf"\^\{{([{re.escape(SUPERSCRIPT_FROM)}]+)\}}",
+        lambda m: m.group(1).translate(exp_map),
+        x)
+    
+    # general latex subscripts like _{(1)} or _{a + b}
+    x = re.sub(
+        rf"\_\{{([{re.escape(SUBSCRIPT_FROM)}]+)\}}",
+        lambda m: m.group(1).translate(subscript_map),
+        x)
+    
+    # exponents like e-13 or e+05
+    x = re.sub(
+        r"e\+?(-?)0*(\d+)", 
+        lambda m: "·10" + (m.group(1) + m.group(2)).translate(exp_map), 
+        x)
     
     return x 
 
 def format_number(x, fmt=None, udigits=2, fdigits=3, fformat="nice", latex=False):
     if fmt is not None:
         return x.__format__(fmt)
-    elif isinstance(x, str): 
+    elif isinstance(x, str):
         return x
     elif isinstance(x, un.UFloat) or isinstance(x, un.Variable):
         fmt_str = ".{0}u{1}S".format(udigits, "L" if latex else "P")
@@ -257,7 +277,9 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
         
     if show:
         data_ = np.transpose([[fn(x, fmt[i] if fmt is not None else None, udigits=udigits, fdigits=fdigits) for x in col] for i,col in enumerate(data)])
-        if headers is not None: headers_ = [color.fx.bold(tex2uni(header)) for header in headers]
+        data_[:,0] = [tex2uni(pretty_exponent(x),False) for x in data_[:,0]]
+        if headers is not None: 
+            headers_ = [color.fx.bold(tex2uni(pretty_exponent(header))) for header in headers]
         
         table_str = tabulate(data_, headers_ if headers is not None else [], "rounded_outline")
         table_len = len(table_str.split("\n")[0])
@@ -294,7 +316,6 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
 \multicolumn{{{ncol}}}{{r}}{{{cont_footer}}}\\
 \endfoot
 
-\midrule
 \bottomrule
 \endlastfoot
 
@@ -304,7 +325,7 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
     table_option=table_option,
     columns='l' * len(data),
     caption=caption,
-    label=filename.split(".")[0] if filename else Path(filepath).name.split(".")[0] if filepath else "<filename>",
+    label=Path(filename).stem if filename else Path(filepath).stem if filepath else "<filename>",
     headers=(headers_ + r"\\" if headers_ else ""),
     ncol=len(data),
     cont_label=("" if compact else 
@@ -321,3 +342,4 @@ def table(data, headers=None, index_column=None, fmt=None, filename=None, captio
         filepath = tables_path + filename if filename else filepath
         with open(filepath, "w") as file:
                 file.writelines(table)
+        print(f"table saved to '{filepath}'")

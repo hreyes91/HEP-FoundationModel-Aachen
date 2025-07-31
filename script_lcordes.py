@@ -1,5 +1,4 @@
 from model_lcordes import *
-os.chdir("/net/data_ttk/lcordes/classifier_var_heads")
 
 paths = {"ttbar/train": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_train___1Mfromeach_403030.h5"),
         "ttbar/test": Path(r"/net/data_ttk/hreyes/OneBin/TTBar_test___1Mfromeach_403030.h5"),

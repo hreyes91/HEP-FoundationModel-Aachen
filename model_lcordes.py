@@ -78,7 +78,7 @@ def get_dataloader(
     split=(60, 20) # train / val
 ):
     """ 
-    num_const: jets from bg and sig EACH! Total amount of jets = 2 * num_cons
+    num_const: jets from bg and sig EACH! Total amount of jets = 2 * num_cons. If None: loads the maximum sample size possible 
     bg_file and sig_file: refer to the data used for training. validation and testing data paths are infered by replacing "train" to "val" or "test" in the filename
     val_split: Training data has size 2*num_events, val data has size split[1] / split[0] * 2 * num_events, and the test data has size 2 * num_events if selected using train=False
     """
@@ -134,7 +134,7 @@ def get_dataloader(
         val_dataloader =  __get_dataloader__(val_bg_file, val_sig_file, num_events_val, num_const, batch_size, num_workers)
         return  train_dataloader, val_dataloader
     else: 
-        test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, num_const, batch_size, num_workers)
+        test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, num_const, batch_size, num_workers, shuffle=False)
         return test_dataloader
 
 
@@ -327,7 +327,9 @@ class JetClassifier(nn.Module):
             val_dataloader =  __get_dataloader__(val_bg_file, val_sig_file, num_events_val, self.num_const, batch_size, num_workers)
             return  train_dataloader, val_dataloader
         else: 
-            test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, self.num_const, batch_size, num_workers)
+            test_dataloader = __get_dataloader__(
+                test_bg_file, test_sig_file, num_events, 
+                self.num_const, batch_size, num_workers, shuffle=False)
             return test_dataloader
 
     def forward(self, jet, padding):
@@ -532,7 +534,7 @@ class JetClassifier(nn.Module):
         self.best_auc = max(self.best_auc, aucs[0])
         self.total_time_tested += time.time() - t0
 
-    def test_gradients(self, n=1):
+    def test_gradients(self, n=2000, num_workers=1):
         """
             n: computes the gradients of n signal- and n bg-jets
             returns: gradients filepath = (<model_dir>/tests/<global_step>_<global_epoch>/gradients_<n>.npz) 
@@ -548,7 +550,7 @@ class JetClassifier(nn.Module):
         self.to(device)
         self.eval()
 
-        test_loader = self.get_dataloader(n, batch_size=1, num_workers=0, train=False)
+        test_loader = self.get_dataloader(n, batch_size=1, num_workers=num_workers, train=False)
 
         jets, paddings, labels, gradients = [], [], [], []
 
@@ -578,7 +580,7 @@ class JetClassifier(nn.Module):
                     with torch.no_grad():
                         y_prime = self(jet_prime, padding)
 
-                    gradient[0, const, feature] = sign * (y - y_prime).item()
+                    gradient[0, const, feature] = sign * (y_prime - y).item()
 
             jets.append(jet[0].cpu().numpy())
             paddings.append(padding[0].cpu().numpy())
@@ -791,7 +793,7 @@ class JetClassifier2(nn.Module):
             val_dataloader =  __get_dataloader__(val_bg_file, val_sig_file, num_events_val, self.num_const, batch_size, num_workers)
             return  train_dataloader, val_dataloader
         else: 
-            test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, self.num_const, batch_size, num_workers)
+            test_dataloader = __get_dataloader__(test_bg_file, test_sig_file, num_events, self.num_const, batch_size, num_workers, shuffle=False)
             return test_dataloader
     
     def forward(self, jet, padding):
@@ -1020,8 +1022,7 @@ class JetClassifier2(nn.Module):
         self.to(device)
         self.eval()
 
-        test_loader = list(self.get_dataloader(n, batch_size=1, num_workers=0, train=False))
-        np.random.shuffle(test_loader)
+        test_loader = self.get_dataloader(n, batch_size=1, num_workers=0, train=False)
 
         jets, paddings, labels, gradients = [], [], [], []
 
@@ -1053,7 +1054,7 @@ class JetClassifier2(nn.Module):
                     with torch.no_grad():
                         y_prime = self(jet_prime, padding)
 
-                    gradient[0, const, feature] = sign * (y - y_prime).item()
+                    gradient[0, const, feature] = sign * (y_prime - y).item()
 
             jets.append(jet[0].cpu().numpy())
             paddings.append(padding[0].cpu().numpy())
