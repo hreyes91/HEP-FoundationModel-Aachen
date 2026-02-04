@@ -75,10 +75,12 @@ python test_classifier.py --data_path_1 /net/data_ttk/hreyes/OneBin//TTBar_train
 
 # Train classifier (Dijets)
 
-
+```python
 python train_classifier_AL.py   --log_dir <log_dir> --bg <bg_path> --sig <sg_path> --num_const <num_const> --num_epochs <num_epochs>  --lr <learning_rate> --batch_size <batch_size> --name_sufix <name_sufix> --model_name <model_name> --model_path_in <model_path_in> --dropout <dropout> --weight_decay <weight_decay> --num_layers <num_layers> --jet_last_emb 'linear' --scheduler_name <fixed,reduce,cos> --fun_model <scratch,fine,freeze> --use_sep_token <true,false> --use_hlf <true,false>
-
+```
 # Test classifier (Dijets)
 
-python test_classifier_AL.py --data_path_1 <data_path_1> --data_path_2 <data_path_2> --model_dir <model_dir>  --num_events <num_events_test> --num_const <num_const> --pred_name <predictions.npz> --model_name <best,last>
+```python
 
+python test_classifier_AL.py --data_path_1 <data_path_1> --data_path_2 <data_path_2> --model_dir <model_dir>  --num_events <num_events_test> --num_const <num_const> --pred_name <predictions.npz> --model_name <best,last>
+```
