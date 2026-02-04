@@ -1,0 +1,15 @@
+executable =  bash_run_FLJT_2.sh
+log =  FLJT-sleep_2.log
+output = FLJT-sleep_2.out
+error = FLJT-sleep_2.err
+request_memory=50000
+request_cpus=2
+#request_GPUMemory=8000
+request_GPUs=1
+initialdir=/home/home3/institut_thp/hreyes/Transformers/FoundationModels/HEP-FoundationModel-Aachen
+
+#initialdir=/home/home3/institut_thp/hreyes/MLlikelihoods/MLlikelihoods
+
+#requirements = (Machine == "lx3bgpu2.physik.rwth-aachen.de")
+
+queue
