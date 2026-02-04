@@ -9,7 +9,7 @@ from helpers_train import *
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 if __name__ == "__main__":
     args = parse_input()
     save_arguments(args)
@@ -84,15 +84,21 @@ if __name__ == "__main__":
     if args.contin:
         load_opt_states(opt, scheduler, scaler, args.log_dir)
         print("Loaded optimizer")
-
+    stopping_patience=5
     logger = SummaryWriter(args.log_dir)
     global_step = args.global_step
     loss_list = []
     perplexity_list = []
     mean_val_loss=9999999
+
+
+    loss_list_epoch=[]
+    val_list_epoch=[]
+
+
     for epoch in range(args.num_epochs):
         model.train()
-
+        loss_list_here=[]
         for x, padding_mask, true_bin in tqdm(
             train_loader, total=len(train_loader), desc=f"Training Epoch {epoch + 1}"
         ):
@@ -120,6 +126,7 @@ if __name__ == "__main__":
             scheduler.step()
 
             loss_list.append(loss.cpu().detach().numpy())
+            loss_list_here.append(loss.cpu().detach().numpy())
             perplexity_list.append(perplexity.mean().cpu().detach().numpy())
 
             if (global_step + 1) % args.logging_steps == 0:
@@ -163,12 +170,46 @@ if __name__ == "__main__":
             logger.add_scalar("Val/Loss", np.mean(val_loss), global_step)
             logger.add_scalar("Val/Perplexity", np.mean(val_perplexity), global_step)
         
-        if np.mean(val_loss) < mean_val_loss:
+        if np.mean(val_loss) < mean_val_loss-.001:
                 print('new val loss:'+str(np.mean(val_loss))+'<'+str(mean_val_loss)+' saving new model as best' )
                 save_model(model, args.log_dir, "best")
                 mean_val_loss=np.mean(val_loss)
                 save_opt_states_best(opt, scheduler, scaler, args.log_dir)
+                wait = 0
+        if np.mean(val_loss) > mean_val_loss-.001:
+                wait += 1
+                
+                if wait >= stopping_patience:
+                    print(f"Early stopping triggered at epoch {epoch+1} (no val_loss improvement in {stopping_patience} epochs).")
+                    break
             
         save_model(model, args.log_dir, "last")
         save_opt_states(opt, scheduler, scaler, args.log_dir)
+        if epoch==1 or epoch%5==0:
+            save_model(model,args.log_dir, "epoch_"+str(epoch))
+        
     
+        mean_loss=np.mean(loss_list_here)
+        mean_val=np.mean(val_loss)
+        loss_list_epoch.append(mean_loss)
+        val_list_epoch.append(mean_val)
+
+    history={'loss':loss_list_epoch,'val_loss':val_list_epoch}
+    
+    history_frame=pd.DataFrame(history)
+    history_frame.to_csv(os.path.join(args.log_dir, "history.txt"),index=False)
+
+
+
+
+  
+    import matplotlib.pyplot as plt
+    plt.plot(history_frame['loss'], label='Train Loss')
+    plt.plot(history_frame['val_loss'], label='Val Loss')
+    plt.xlabel('iter')
+    plt.ylabel('Loss')
+    plt.yscale('log')
+    plt.legend()
+    plt.savefig(os.path.join(args.log_dir, "history.pdf"))
+    plt.close()
+    logger.close()
