@@ -2,7 +2,7 @@
 # HEP-FoundationModel-Aachen
 
 
-Foundation models for High Energy Physics.
+Foundation models for High Energy Physics (LHC jets).
 
 
 
@@ -72,3 +72,13 @@ python train_finetune.py   --log_dir <c-model-dir> --bg /net/data_ttk/hreyes/One
 ```python
 python test_classifier.py --data_path_1 /net/data_ttk/hreyes/OneBin//TTBar_train___1Mfromeach_403030.h5 --data_path_2 /net/data_ttk/hreyes/JetClass/discretized/OneBin/ZJetsToNuNu_train___1Mfromeach_403030.h5 --model_dir <c-model-dir>  --num_events 100 --num_const 128
 ```
+
+# Train classifier (Dijets)
+
+
+python train_classifier_AL.py   --log_dir <log_dir> --bg <bg_path> --sig <sg_path> --num_const <num_const> --num_epochs <num_epochs>  --lr <learning_rate> --batch_size <batch_size> --name_sufix <name_sufix> --model_name <model_name> --model_path_in <model_path_in> --dropout <dropout> --weight_decay <weight_decay> --num_layers <num_layers> --jet_last_emb 'linear' --scheduler_name <fixed,reduce,cos> --fun_model <scratch,fine,freeze> --use_sep_token <true,false> --use_hlf <true,false>
+
+# Test classifier (Dijets)
+
+python test_classifier_AL.py --data_path_1 <data_path_1> --data_path_2 <data_path_2> --model_dir <model_dir>  --num_events <num_events_test> --num_const <num_const> --pred_name <predictions.npz> --model_name <best,last>
+
