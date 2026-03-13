@@ -13,6 +13,7 @@ from torch.nn import (
 
 from torch import nn
 
+
 class EmbeddingProductHead(Module):
     def __init__(self, hidden_dim=256, num_features=3, num_bins=(41, 41, 41)):
         super(EmbeddingProductHead, self).__init__()
@@ -24,7 +25,7 @@ class EmbeddingProductHead(Module):
         self.linear = Linear(hidden_dim, self.combined_bins * hidden_dim)
         self.act = torch.nn.Softplus()
         self.logit_scale = torch.nn.Parameter(torch.tensor(1.0))
-
+    '''
     def forward(self, emb):
         batch_size, seq_len, _ = emb.shape
         bin_emb = self.act(self.linear(emb))
@@ -35,11 +36,92 @@ class EmbeddingProductHead(Module):
         bin_emb_xy = bin_emb_xy.view(batch_size, seq_len, -1, self.hidden_dim)
 
         logits = bin_emb_xy @ bin_emb_z.transpose(2, 3)
+        #logits = self.logit_scale.exp() * logits.view(batch_size, seq_len, -1)
+        
         logits = self.logit_scale.exp() * logits.view(batch_size, seq_len, -1)
+
+        # add stop token logit
+        stop_logit = torch.zeros(batch_size, seq_len, 1, device=logits.device)
+        logits = torch.cat([logits, stop_logit], dim=-1)
+
+
+        
         return logits
 
+    '''
+    
+    def forward(self, emb):
+        batch_size, seq_len, _ = emb.shape
+
+        bin_emb = self.act(self.linear(emb))
+        bin_emb = bin_emb.view(batch_size, seq_len, self.combined_bins, self.hidden_dim)
+
+        bin_emb_x, bin_emb_y, bin_emb_z = torch.split(bin_emb, self.num_bins, dim=2)
+
+        # compute xyz logits without materializing large tensors
+        logits = torch.einsum(
+            "bsxh,bsyh,bszh->bsxyz",
+            bin_emb_x,
+            bin_emb_y,
+            bin_emb_z,
+        )
+
+        logits = logits.reshape(batch_size, seq_len, -1)
+
+        logits = self.logit_scale.exp() * logits
+
+        # add stop token logit
+        stop_logit = torch.zeros(batch_size, seq_len, 1, device=logits.device)
+        logits = torch.cat([logits, stop_logit], dim=-1)
+
+        return logits
+"""
+
+class EmbeddingProductHead(nn.Module):
+    def __init__(self, hidden_dim=256, num_features=3, num_bins=(41,31,31), head_dim=128):
+        super(EmbeddingProductHead, self).__init__()
+        assert num_features == 3
+        self.num_features = num_features
+        self.num_bins = num_bins
+        self.hidden_dim = hidden_dim
+        self.head_dim = head_dim
+        self.combined_bins = int(np.prod(num_bins))
+        # linear to project into smaller embedding per bin
+        self.linear = nn.Linear(hidden_dim, sum(num_bins) * head_dim)
+        self.act = nn.Softplus()
+        self.logit_scale = nn.Parameter(torch.tensor(1.0))
+    
+    def forward(self, emb):
+        B, S, _ = emb.shape
+        # project and split
+        bin_emb = self.act(self.linear(emb))
+        bin_emb = bin_emb.view(B, S, sum(self.num_bins), self.head_dim)
+        bin_emb_x, bin_emb_y, bin_emb_z = torch.split(bin_emb, self.num_bins, dim=2)
+
+        # Step 1: contract X and Y efficiently using batch matmul
+        # bin_emb_x: (B,S,bins_x,H), bin_emb_y: (B,S,bins_y,H)
+        # output: (B,S,bins_x,bins_y,H)
+        bin_emb_x = bin_emb_x.unsqueeze(3)          # (B,S,bins_x,1,H)
+        bin_emb_y = bin_emb_y.unsqueeze(2)          # (B,S,1,bins_y,H)
+        bin_emb_xy = bin_emb_x * bin_emb_y          # element-wise, still (B,S,bins_x,bins_y,H)
+
+        # Step 2: contract with Z using batch matmul
+        # bin_emb_z: (B,S,bins_z,H)
+        # logits: (B,S,bins_x,bins_y,bins_z)
+        logits = torch.matmul(bin_emb_xy, bin_emb_z.unsqueeze(2).transpose(-1,-2))  # batched matmul
+        logits = logits.reshape(B, S, -1)  # flatten to joint bins
+
+        # scale
+        logits = self.logit_scale.exp() * logits
 
 
+        # add stop token logit
+        #stop_logit = torch.zeros(batch_size, seq_len, 1, device=logits.device)
+        stop_logit = torch.zeros(100, seq_len, 1, device=logits.device)
+        logits = torch.cat([logits, stop_logit], dim=-1)
+
+        return logits
+"""
 class JetClassifierWithClassAttention(Module):
     def __init__(self, hidden_dim=256, num_layers=10, num_cls_layers=2,
                  num_heads=4, num_features=3, num_bins=(41, 31, 31),

@@ -2,6 +2,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 
+
+
 from model import JetTransformer
 
 from tqdm import tqdm
@@ -9,7 +11,7 @@ from helpers_train import *
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 if __name__ == "__main__":
     args = parse_input()
     save_arguments(args)
@@ -33,6 +35,7 @@ if __name__ == "__main__":
         num_features=num_features,
         num_bins=num_bins,
         num_const=args.num_const,
+        fixed_samples=args.fixed_sample,
         reverse=args.reverse,
         start_token=args.start_token,
         end_token=args.end_token,
@@ -48,6 +51,7 @@ if __name__ == "__main__":
         num_features=num_features,
         num_bins=num_bins,
         num_const=args.num_const,
+        fixed_samples=args.fixed_sample,
         reverse=args.reverse,
         start_token=args.start_token,
         end_token=args.end_token,
@@ -84,7 +88,7 @@ if __name__ == "__main__":
     if args.contin:
         load_opt_states(opt, scheduler, scaler, args.log_dir)
         print("Loaded optimizer")
-
+    stopping_patience=5
     logger = SummaryWriter(args.log_dir)
     global_step = args.global_step
     loss_list = []
@@ -124,9 +128,9 @@ if __name__ == "__main__":
             scaler.step(opt)
             scaler.update()
             scheduler.step()
-
-            loss_list.append(loss.cpu().detach().numpy())
-            loss_list_here.append(loss.cpu().detach().numpy())
+            train_loss=loss.cpu().detach().numpy()
+            loss_list.append(train_loss)
+            loss_list_here.append(train_loss)
             perplexity_list.append(perplexity.mean().cpu().detach().numpy())
 
             if (global_step + 1) % args.logging_steps == 0:
@@ -170,14 +174,24 @@ if __name__ == "__main__":
             logger.add_scalar("Val/Loss", np.mean(val_loss), global_step)
             logger.add_scalar("Val/Perplexity", np.mean(val_perplexity), global_step)
         
-        if np.mean(val_loss) < mean_val_loss:
+        if np.mean(val_loss) < mean_val_loss-.001:
                 print('new val loss:'+str(np.mean(val_loss))+'<'+str(mean_val_loss)+' saving new model as best' )
                 save_model(model, args.log_dir, "best")
                 mean_val_loss=np.mean(val_loss)
                 save_opt_states_best(opt, scheduler, scaler, args.log_dir)
+                wait = 0
+        if np.mean(val_loss) > mean_val_loss-.001:
+                wait += 1
+                
+                if wait >= stopping_patience:
+                    print(f"Early stopping triggered at epoch {epoch+1} (no val_loss improvement in {stopping_patience} epochs).")
+                    break
             
         save_model(model, args.log_dir, "last")
         save_opt_states(opt, scheduler, scaler, args.log_dir)
+        if epoch==1 or epoch%5==0:
+            save_model(model,args.log_dir, "epoch_"+str(epoch))
+        
     
         mean_loss=np.mean(loss_list_here)
         mean_val=np.mean(val_loss)

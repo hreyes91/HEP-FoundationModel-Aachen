@@ -125,7 +125,7 @@ def parse_input():
         default=5000,
         help="Training steps between saving checkpoints",
     )
-    parser.add_argument("--num_workers", type=int, default=4, help="Number of workers")
+    parser.add_argument("--num_workers", type=int, default=1, help="Number of workers")
 
     parser.add_argument(
         "--num_const", type=int, default=100, help="Number of constituents"
@@ -204,6 +204,11 @@ def parse_input():
     parser.add_argument(
         "--tanh", action="store_true", help="Apply tanh as final activation"
     )
+
+    parser.add_argument(
+        "--fixed_sample", action="store_true", help="take the first n samples of dataset"
+        )
+
     args = parser.parse_args()
     return args
 
@@ -256,9 +261,11 @@ def load_data(
         df = pd.read_hdf(path, "discretized", stop=None)
         print('size samples')
         print(df.shape)
+        
         df=df.sample(n_events)
     else:
         df = pd.read_hdf(path, "discretized", stop=n_events)
+      
     x, padding_mask, bins = preprocess_dataframe(
         df,
         num_features=num_features,
@@ -277,6 +284,8 @@ def load_data(
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle=shuffle,
+        pin_memory=True,
+        persistent_workers=True,
     )
     return train_loader
 
